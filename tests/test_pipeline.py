@@ -76,6 +76,8 @@ def test_build_example_structure():
                                   "content": "Wote asɛm no?"}
     assert ex["num_found"] == 1 and ex["num_phrases"] == 2
     assert ex["tools"] == [LOOKUP_TOOL]
+    assert ex["tool_phrases"] == ["matter", "court"] and ex["tool_result"] == ex["messages"][3]["content"]
+    assert ex["reasoning"] == "1. 'court' is 'asɛnnibea'." and ex["translation"] == "Wote asɛm no?"
     json.dumps(ex, ensure_ascii=False)
 
     # no phrases -> no tool call; reasoning + translation directly

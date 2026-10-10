@@ -42,6 +42,21 @@ Each row is a full agent trajectory in the standard chat format with `tools`:
 system -> user -> assistant(tool_calls) -> tool(results) -> assistant(reasoning_content + content)
 ```
 
+## Columns
+
+For browsing, each row has the trajectory as flat columns, in order:
+
+| column | content |
+|---|---|
+| `english` | source text |
+| `tool_phrases` | phrases the model looks up (the tool-call arguments) |
+| `tool_result` | what the tool returns (fed back to the model) |
+| `reasoning` | step-by-step linguistic reasoning, written after the lookup |
+| `translation` | gold Twi translation |
+
+`messages` + `tools` hold the same content in the chat format used for training. The reasoning is
+in the final assistant message's `reasoning_content` field, separate from `content`.
+
 ## Where each part comes from
 
 | Part | Source |

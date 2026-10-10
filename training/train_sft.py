@@ -118,6 +118,10 @@ def main():
     args = ap.parse_args()
 
     if args.backend == "unsloth":
+        # Variable-length batches exhaust torch.compile's recompile limit within ~8 steps, and
+        # Unsloth's compiled->eager switch then crashes on Gemma 4 (CUDA launch failure). Eager
+        # from the start is stable; Unsloth's kernels and offloaded checkpointing still apply.
+        os.environ.setdefault("UNSLOTH_COMPILE_DISABLE", "1")
         import unsloth  # noqa: F401  (must be imported before transformers)
     import torch
     from datasets import load_dataset

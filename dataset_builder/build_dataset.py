@@ -82,8 +82,15 @@ def build_example(row: Dict, phrases: List[str], lookup: TwiLookup, idx: int) ->
         messages.append({"role": "tool", "tool_call_id": call_id, "name": TOOL_NAME,
                          "content": format_tool_result(results)})
     messages.append({"role": "assistant", "reasoning_content": row["reasoning"], "content": row["translation"]})
+    tool_result = messages[3]["content"] if results else ""
     return {
         "id": row["id"],
+        # flat, human-readable view of the trajectory (training uses `messages`)
+        "english": row["text"],
+        "tool_phrases": [r["phrase"] for r in results],
+        "tool_result": tool_result,
+        "reasoning": row["reasoning"],
+        "translation": row["translation"],
         "messages": messages,
         "tools": [LOOKUP_TOOL],
         "source": row["source"],
