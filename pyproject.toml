@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "twi-translate"
+version = "0.1.0"
+description = "English->Twi translation with a tool-calling LLM backed by the SHOLA Gemini lookup table"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "CC-BY-NC-4.0" }
+authors = [{ name = "Mich-Seth Owusu" }]
+dependencies = []
+
+[project.optional-dependencies]
+# in-process inference
+local = ["torch", "transformers>=4.43", "accelerate"]
+# talk to a vLLM / OpenAI-compatible server
+client = ["openai>=1.0"]
+# HTTP API
+server = ["fastapi", "uvicorn", "pydantic"]
+# rebuild the dataset
+build = ["datasets", "pyarrow", "spacy>=3.7"]
+# fine-tune and evaluate
+train = ["torch", "transformers>=4.43", "datasets", "peft", "accelerate", "sacrebleu", "openai>=1.0"]
+dev = ["pytest"]
+
+[project.scripts]
+twi-translate = "twi_translate.cli:main"
+
+[tool.setuptools]
+packages = ["twi_translate"]
+
+[tool.setuptools.package-data]
+twi_translate = ["data/*.tsv.gz"]

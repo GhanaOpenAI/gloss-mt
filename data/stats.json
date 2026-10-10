@@ -1,0 +1,26 @@
+{
+  "train": {
+    "examples": 15134,
+    "with_tool_call": 14431,
+    "phrases": 139747,
+    "phrases_found": 57546,
+    "lookup_hit_rate": 0.4118,
+    "all_phrases_missing": 749
+  },
+  "validation": {
+    "examples": 332,
+    "with_tool_call": 322,
+    "phrases": 3166,
+    "phrases_found": 1285,
+    "lookup_hit_rate": 0.4059,
+    "all_phrases_missing": 17
+  },
+  "test": {
+    "examples": 538,
+    "with_tool_call": 513,
+    "phrases": 4864,
+    "phrases_found": 1983,
+    "lookup_hit_rate": 0.4077,
+    "all_phrases_missing": 27
+  }
+}
