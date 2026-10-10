@@ -45,7 +45,10 @@ def main():
         serve(translator, args.host, args.port)
         return
     text = args.text if args.text else sys.stdin.read()
-    print(translator.translate(text, verbose=args.verbose)["translation"])
+    out = translator.translate(text, verbose=args.verbose)
+    if args.verbose and out.get("reasoning"):
+        print(f"[reasoning]\n{out['reasoning']}\n")
+    print(out["translation"])
 
 
 if __name__ == "__main__":
