@@ -79,6 +79,28 @@ def split_reasoning(text: str) -> Tuple[str, str]:
     if "</think>" in text:
         reasoning, answer = text.split("</think>", 1)
         return reasoning.replace("<think>", "").strip(), answer.strip()
+    # Numbered reasoning traces when special channel tokens were stripped
+    lines = text.strip().split("\n")
+    if lines and re.match(r"^\d+\.\s+", lines[0]):
+        reasoning_lines, answer_lines = [], []
+        is_reasoning = True
+        for line in lines:
+            if is_reasoning and re.match(r"^\d+\.\s+", line):
+                reasoning_lines.append(line)
+            else:
+                is_reasoning = False
+                answer_lines.append(line)
+        answer = "\n".join(answer_lines).strip()
+        reasoning = "\n".join(reasoning_lines).strip()
+        if not answer and reasoning_lines:
+            m = re.search(r"translated (?:into Twi |as |in Twi as )*as\s+['\"]([^'\"]+)['\"]", reasoning_lines[0], re.I)
+            if m:
+                answer = m.group(1).strip()
+            else:
+                quotes = re.findall(r"['\"]([^'\"]+)['\"]", reasoning_lines[0])
+                if len(quotes) >= 2:
+                    answer = quotes[1].strip()
+        return reasoning, answer
     return "", text.strip()
 
 
