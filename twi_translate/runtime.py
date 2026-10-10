@@ -141,11 +141,12 @@ class TransformersBackend:
 class OpenAIBackend:
     """Talks to an OpenAI-compatible endpoint (vLLM, SGLang, TGI, ...)."""
 
-    def __init__(self, base_url: str, model: str, api_key: str = "EMPTY"):
+    def __init__(self, base_url: str, model: str, api_key: str = "EMPTY", max_tokens: int = 2048):
         from openai import OpenAI
 
         self.client = OpenAI(base_url=base_url, api_key=api_key)
         self.model = model
+        self.max_tokens = max_tokens
 
     @staticmethod
     def _to_api(messages: List[Dict]) -> List[Dict]:
@@ -163,6 +164,7 @@ class OpenAIBackend:
     def chat(self, messages: List[Dict], tools: Optional[List[Dict]], temperature: float = 0.0):
         """Returns (answer, tool_calls, reasoning)."""
         kwargs = {"model": self.model, "messages": self._to_api(messages), "temperature": temperature,
+                  "max_tokens": self.max_tokens,
                   "extra_body": {"chat_template_kwargs": TEMPLATE_KWARGS}}
         if tools:
             kwargs["tools"] = tools
