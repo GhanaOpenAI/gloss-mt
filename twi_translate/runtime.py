@@ -279,9 +279,10 @@ class TwiTranslator:
                             yield {"type": "translation", "delta": clean_tail}
                     else:
                         lines = current_stream_text.split("\n")
-                        if len(lines) > 1 and lines[-1].strip() and not re.match(r"^\d+\.", lines[-1].strip()):
+                        last = lines[-1].strip()
+                        if len(lines) > 1 and last and not re.match(r"^\d", last):
                             in_translation = True
-                            yield {"type": "translation", "delta": lines[-1].strip()}
+                            yield {"type": "translation", "delta": piece}
                         else:
                             yield {"type": "reasoning", "delta": piece}
                 else:
