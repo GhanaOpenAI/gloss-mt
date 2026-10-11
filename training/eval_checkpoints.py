@@ -135,6 +135,8 @@ def main():
     ap.add_argument("--data", required=True, help="Path to validation.jsonl")
     ap.add_argument("--limit", type=int, default=100, help="Number of validation examples (default 100)")
     ap.add_argument("--batch-size", type=int, default=4, help="Inference batch size")
+    ap.add_argument("--steps", nargs="*", type=int, default=None, help="Specific step numbers to evaluate (e.g. 900 1800)")
+    ap.add_argument("--latest", action="store_true", help="Only evaluate the latest checkpoint")
     ap.add_argument("--out", default=None, help="Output JSON path (defaults to <checkpoints>/eval_metrics.json)")
     args = ap.parse_args()
 
@@ -151,7 +153,11 @@ def main():
         return int(match.group(1)) if match else 0
 
     ckpt_dirs = sorted(ckpt_dirs, key=get_step)
-    print(f"Found {len(ckpt_dirs)} checkpoints: {[os.path.basename(d) for d in ckpt_dirs]}")
+    if args.steps:
+        ckpt_dirs = [d for d in ckpt_dirs if get_step(d) in set(args.steps)]
+    elif args.latest and ckpt_dirs:
+        ckpt_dirs = [ckpt_dirs[-1]]
+    print(f"Evaluating {len(ckpt_dirs)} checkpoint(s): {[os.path.basename(d) for d in ckpt_dirs]}")
 
     print(f"Loading tokenizer from {args.base}...")
     tok = AutoTokenizer.from_pretrained(args.base)
