@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Twi Translator — Ghana Open AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@300;400;500&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-hover: #1557b0;
+      --primary-light: #e8f0fe;
+      --bg: #f8f9fa;
+      --card-bg: #ffffff;
+      --border: #dadce0;
+      --border-focus: #1a73e8;
+      --text: #202124;
+      --text-secondary: #5f6368;
+      --success: #1e8e3e;
+      --warning: #f9ab00;
+      --chip-bg: #f1f3f4;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
+      --card-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #1a73e8 0%, #34a853 100%);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-family: 'Google Sans', sans-serif;
+      font-size: 18px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .brand-title {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 20px;
+      font-weight: 500;
+      color: #3c4043;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-badge {
+      font-size: 11px;
+      font-weight: 500;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 12px;
+      letter-spacing: 0.3px;
+    }
+
+    .header-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .header-meta a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .header-meta a:hover {
+      text-decoration: underline;
+    }
+
+    main {
+      flex: 1;
+      max-width: 1380px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Translation Dual Pane */
+    .translate-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 860px) {
+      .translate-grid {
+        grid-template-columns: 1fr;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+    }
+
+    .pane-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      min-height: 380px;
+      position: relative;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .pane-card:focus-within {
+      border-color: var(--border-focus);
+      box-shadow: 0 1px 3px 0 rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
+    }
+
+    .card-prominent {
+      border: 2px solid #1a73e8;
+      background: linear-gradient(180deg, #ffffff 0%, #fcfdff 100%);
+    }
+
+    .pane-header {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafbfc;
+      border-top-left-radius: var(--radius);
+      border-top-right-radius: var(--radius);
+    }
+
+    .lang-tab {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--primary);
+      padding: 6px 14px;
+      background: var(--primary-light);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-pill {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #f1f3f4;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+
+    .status-pill.analyzing {
+      background: #fef7e0;
+      color: #b06000;
+    }
+
+    .status-pill.translating {
+      background: #e8f0fe;
+      color: #1a73e8;
+    }
+
+    .status-pill.done {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .pulse {
+      animation: pulseAnim 1.2s infinite;
+    }
+
+    @keyframes pulseAnim {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+
+    .pane-body {
+      flex: 1;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    textarea.input-area {
+      width: 100%;
+      height: 100%;
+      min-height: 250px;
+      border: none;
+      outline: none;
+      resize: none;
+      font-family: 'Roboto', sans-serif;
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--text);
+      background: transparent;
+    }
+
+    textarea.input-area::placeholder {
+      color: #9aa0a6;
+    }
+
+    .output-area {
+      flex: 1;
+      min-height: 250px;
+      font-size: 18px;
+      line-height: 1.7;
+      color: var(--text);
+      font-weight: 400;
+      white-space: pre-wrap;
+      word-break: break-word;
+      user-select: text;
+    }
+
+    .output-area:empty::before {
+      content: "Translation in Twi (Akan) will appear here...";
+      color: #9aa0a6;
+    }
+
+    .cursor {
+      display: inline-block;
+      width: 3px;
+      height: 1.1em;
+      background: var(--primary);
+      vertical-align: text-bottom;
+      animation: blink 0.8s infinite;
+      margin-left: 2px;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .pane-footer {
+      padding: 12px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fafbfc;
+      border-bottom-left-radius: var(--radius);
+      border-bottom-right-radius: var(--radius);
+    }
+
+    .footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      padding: 7px;
+      border-radius: 50%;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .icon-btn:hover {
+      background: #e8eaed;
+      color: var(--text);
+    }
+
+    .btn-translate {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 9px 24px;
+      border-radius: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 1px 2px rgba(60,64,67,.3);
+      transition: background 0.2s, box-shadow 0.2s;
+    }
+
+    .btn-translate:hover {
+      background: var(--primary-hover);
+      box-shadow: 0 2px 4px rgba(60,64,67,.3);
+    }
+
+    .char-count {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    /* Samples Tray */
+    .samples-tray {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      scrollbar-width: thin;
+    }
+
+    .sample-chip {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .sample-chip:hover {
+      background: var(--chip-bg);
+      border-color: #bdc1c6;
+      color: var(--text);
+    }
+
+    /* Inspection Card (Thinking + Tool Calls) */
+    .inspect-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--card-shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .inspect-header {
+      padding: 14px 20px;
+      background: #fafbfc;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .inspect-header-title {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: #3c4043;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .inspect-toggle-btn {
+      font-size: 12px;
+      color: var(--primary);
+      font-weight: 500;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .inspect-content {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .inspect-subheading {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tool-results-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .term-badge {
+      background: #ffffff;
+      border: 1px solid #c2e7ff;
+      border-radius: 8px;
+      padding: 8px 14px;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 3px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    .term-key {
+      font-size: 13px;
+      font-weight: 500;
+      color: #001d35;
+    }
+
+    .term-val {
+      font-size: 13px;
+      color: #00639b;
+      font-family: 'Google Sans', sans-serif;
+      font-weight: 500;
+    }
+
+    .term-badge.missing {
+      border-color: #fce8e6;
+      background: #fffbfa;
+    }
+
+    .term-badge.missing .term-val {
+      color: #c5221f;
+      font-style: italic;
+      font-size: 12px;
+    }
+
+    .reasoning-box {
+      font-family: 'Fira Code', 'Roboto Mono', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      background: #f8f9fa;
+      border: 1px solid #e8eaed;
+      border-radius: 8px;
+      padding: 16px;
+      color: #374151;
+      max-height: 260px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .reasoning-box:empty::before {
+      content: "Linguistic reasoning steps (grammar, concord, idioms) will stream here...";
+      color: #9aa0a6;
+      font-family: 'Roboto', sans-serif;
+      font-style: italic;
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      background: #ffffff;
+      padding: 16px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: auto;
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #323232;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="#" class="brand">
+      <div class="brand-logo">T</div>
+      <div class="brand-title">
+        Twi Translator
+        <span class="brand-badge">Akan · Gemma 4 31B</span>
+      </div>
+    </a>
+    <div class="header-meta">
+      <span><strong>Author:</strong> <a href="https://huggingface.co/ghanaopenai" target="_blank">Ghana Open AI</a></span>
+      <span>•</span>
+      <span><strong>Supported by:</strong> <a href="https://ghananlp.org" target="_blank">Ghana NLP</a></span>
+      <span>•</span>
+      <span><a href="https://huggingface.co/ghanaopenai/twi-translator-gemma4-31b" target="_blank">Model Card</a></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Samples Tray -->
+    <div class="samples-tray">
+      <span style="font-size: 12px; font-weight: 500; color: var(--text-secondary);">Examples:</span>
+      <div class="sample-chip" onclick="setSample('The court announced the decision yesterday.')">The court announced the decision...</div>
+      <div class="sample-chip" onclick="setSample('The queen-mother advised the young people to avoid illegal mining in the community.')">The queen-mother advised the youth...</div>
+      <div class="sample-chip" onclick="setSample('The temperature difference between the inner and outer surface of the cylinder.')">Temperature difference of cylinder...</div>
+      <div class="sample-chip" onclick="setSample('All human beings are born free and equal in dignity and rights.')">Universal Declaration of Human Rights...</div>
+    </div>
+
+    <!-- Main Dual Translation Panes -->
+    <div class="translate-grid">
+      <!-- Input Box (Box 1: English) -->
+      <div class="pane-card">
+        <div class="pane-header">
+          <div class="lang-tab">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+            English
+          </div>
+          <span class="char-count" id="charCount">0 characters</span>
+        </div>
+        <div class="pane-body">
+          <textarea class="input-area" id="inputArea" placeholder="Type or paste English text to translate..." autofocus></textarea>
+        </div>
+        <div class="pane-footer">
+          <div class="footer-actions">
+            <button class="icon-btn" title="Clear text" onclick="clearInput()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+            <button class="icon-btn" title="Copy text" onclick="copyText('inputArea')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            </button>
+          </div>
+          <button class="btn-translate" id="btnTranslate" onclick="startTranslation()">
+            <span>Translate</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13h11.86l-5.43 5.43 1.42 1.42L21.14 12l-8.29-8.29-1.42 1.42L16.86 11H5v2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Prominent Final Translation Box (Box 2: Twi) -->
+      <div class="pane-card card-prominent">
+        <div class="pane-header">
+          <div class="lang-tab">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            Twi (Akan)
+          </div>
+          <div class="status-pill" id="statusPill">
+            <span class="status-dot"></span>
+            <span id="statusText">Ready</span>
+          </div>
+        </div>
+        <div class="pane-body">
+          <div class="output-area" id="outputArea"></div>
+        </div>
+        <div class="pane-footer">
+          <div class="footer-actions">
+            <button class="icon-btn" title="Copy translation" onclick="copyText('outputArea')">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+            </button>
+          </div>
+          <span class="char-count" id="outCount"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dedicated Inspection Box (Box 3: Thinking, Reasoning & Tool Calls) -->
+    <div class="inspect-card">
+      <div class="inspect-header" onclick="toggleInspect()">
+        <div class="inspect-header-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="#1a73e8"><path d="M12 2C6.48 2 2 6.48 2 12c0 2.85 1.2 5.41 3.11 7.24.38.36.61.88.61 1.42V21c0 .55.45 1 1 1h10.56c.55 0 1-.45 1-1v-.34c0-.54.23-1.06.61-1.42C20.8 17.41 22 14.85 22 12c0-5.52-4.48-10-10-10zm1 14h-2v-2h2v2zm0-4h-2V7h2v5z"/></svg>
+          Linguistic Reasoning & Dictionary Lookups
+          <span style="font-size: 12px; color: var(--text-secondary); font-weight: normal;" id="inspectSummary"></span>
+        </div>
+        <button class="inspect-toggle-btn" id="inspectToggleBtn">Hide Details ▲</button>
+      </div>
+
+      <div class="inspect-content" id="inspectContent">
+        <!-- Dictionary Tool Calls -->
+        <div>
+          <div class="inspect-subheading">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+            SHOLA Dictionary Lookups (lookup_twi_translation)
+          </div>
+          <div class="tool-results-list" id="toolResultsList">
+            <span style="font-size: 13px; color: #9aa0a6; font-style: italic;">No phrases looked up yet.</span>
+          </div>
+        </div>
+
+        <!-- Linguistic Reasoning Trace -->
+        <div>
+          <div class="inspect-subheading">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z"/></svg>
+            Step-by-Step Linguistic Reasoning (Thought Channel)
+          </div>
+          <div class="reasoning-box" id="reasoningBox"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>
+      <strong>Twi Translator</strong> — Fine-tuned on Gemma 4 31B by 
+      <a href="https://huggingface.co/ghanaopenai" target="_blank">Ghana Open AI</a> with support from 
+      <a href="https://ghananlp.org" target="_blank">Ghana NLP</a>.
+      Available on <a href="https://github.com/GhanaOpenAI/twi-translation-tool-calling" target="_blank">GitHub</a> and 
+      <a href="https://huggingface.co/datasets/ghanaopenai/twi-translation-tool-calling" target="_blank">Hugging Face</a>.
+    </p>
+  </footer>
+
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+  <script>
+    const API_BASE = "https://ghana-chat.ghanaopenai.org";
+    let isTranslating = false;
+    let abortController = null;
+
+    const inputArea = document.getElementById('inputArea');
+    const outputArea = document.getElementById('outputArea');
+    const charCount = document.getElementById('charCount');
+    const outCount = document.getElementById('outCount');
+    const statusPill = document.getElementById('statusPill');
+    const statusText = document.getElementById('statusText');
+    const reasoningBox = document.getElementById('reasoningBox');
+    const toolResultsList = document.getElementById('toolResultsList');
+    const inspectContent = document.getElementById('inspectContent');
+    const inspectToggleBtn = document.getElementById('inspectToggleBtn');
+    const inspectSummary = document.getElementById('inspectSummary');
+
+    inputArea.addEventListener('input', () => {
+      charCount.textContent = `${inputArea.value.length} characters`;
+    });
+
+    function setSample(text) {
+      inputArea.value = text;
+      charCount.textContent = `${text.length} characters`;
+      startTranslation();
+    }
+
+    function clearInput() {
+      inputArea.value = "";
+      outputArea.textContent = "";
+      reasoningBox.textContent = "";
+      toolResultsList.innerHTML = '<span style="font-size: 13px; color: #9aa0a6; font-style: italic;">No phrases looked up yet.</span>';
+      charCount.textContent = "0 characters";
+      outCount.textContent = "";
+      setStatus("ready", "Ready");
+    }
+
+    function setStatus(stage, text) {
+      statusPill.className = `status-pill ${stage}`;
+      const dot = statusPill.querySelector('.status-dot');
+      if (stage === 'analyzing' || stage === 'translating') {
+        dot.classList.add('pulse');
+      } else {
+        dot.classList.remove('pulse');
+      }
+      statusText.textContent = text;
+    }
+
+    function toggleInspect() {
+      const isHidden = inspectContent.style.display === 'none';
+      inspectContent.style.display = isHidden ? 'flex' : 'none';
+      inspectToggleBtn.textContent = isHidden ? 'Hide Details ▲' : 'Show Details ▼';
+    }
+
+    function copyText(elementId) {
+      const el = document.getElementById(elementId);
+      const text = el.value || el.innerText || "";
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast("Copied to clipboard!");
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+    function renderLookups(lookups) {
+      if (!lookups || lookups.length === 0) {
+        toolResultsList.innerHTML = '<span style="font-size: 13px; color: #9aa0a6; font-style: italic;">No dictionary lookups required for this text.</span>';
+        inspectSummary.textContent = "• 0 lookups";
+        return;
+      }
+      let html = '';
+      let foundCount = 0;
+      lookups.forEach(l => {
+        const resText = l.result || "";
+        const lines = resText.split("\n");
+        lines.forEach(line => {
+          if (line.startsWith("- ")) {
+            const parts = line.substring(2).split(" -> ");
+            if (parts.length === 2) {
+              foundCount++;
+              html += `<div class="term-badge">
+                <span class="term-key">${escapeHtml(parts[0])}</span>
+                <span class="term-val">→ ${escapeHtml(parts[1])}</span>
+              </div>`;
+            }
+          } else if (line.startsWith("Not found")) {
+            const missing = line.replace("Not found (translate from your own knowledge): ", "");
+            missing.split(", ").forEach(m => {
+              if (m.trim()) {
+                html += `<div class="term-badge missing">
+                  <span class="term-key">${escapeHtml(m.trim())}</span>
+                  <span class="term-val">not in dictionary</span>
+                </div>`;
+              }
+            });
+          }
+        });
+      });
+      toolResultsList.innerHTML = html || '<span style="font-size: 13px; color: #9aa0a6; font-style: italic;">Lookups completed.</span>';
+      inspectSummary.textContent = `• ${foundCount} terms matched`;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function startTranslation() {
+      const text = inputArea.value.trim();
+      if (!text) return;
+      if (isTranslating && abortController) {
+        abortController.abort();
+      }
+
+      isTranslating = true;
+      abortController = new AbortController();
+
+      // UI state
+      outputArea.innerHTML = '<span class="cursor"></span>';
+      reasoningBox.textContent = "";
+      toolResultsList.innerHTML = '<span style="font-size: 13px; color: #9aa0a6; font-style: italic;">Extracting key noun phrases...</span>';
+      inspectSummary.textContent = "";
+      setStatus("analyzing", "Looking up terms...");
+
+      try {
+        const response = await fetch(`${API_BASE}/translate/stream`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text }),
+          signal: abortController.signal
+        });
+
+        if (!response.ok) {
+          throw new Error(`Server returned ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        let currentTranslation = "";
+        let currentReasoning = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop(); // keep uncompleted tail
+
+          for (const rawEvent of lines) {
+            const clean = rawEvent.trim();
+            if (!clean.startsWith("data:")) continue;
+            const dataStr = clean.substring(5).trim();
+            if (!dataStr) continue;
+
+            try {
+              const event = JSON.parse(dataStr);
+              if (event.type === 'status') {
+                if (event.stage === 'analyzing') {
+                  setStatus('analyzing', 'Looking up terms...');
+                } else if (event.stage === 'generating') {
+                  setStatus('translating', 'Translating & Reasoning...');
+                }
+              } else if (event.type === 'lookups') {
+                renderLookups(event.lookups);
+              } else if (event.type === 'reasoning') {
+                currentReasoning += event.delta;
+                reasoningBox.textContent = currentReasoning;
+                reasoningBox.scrollTop = reasoningBox.scrollHeight;
+              } else if (event.type === 'translation') {
+                currentTranslation += event.delta;
+                outputArea.innerHTML = escapeHtml(currentTranslation) + '<span class="cursor"></span>';
+                outCount.textContent = `${currentTranslation.length} characters`;
+              } else if (event.type === 'done') {
+                currentTranslation = event.translation || currentTranslation;
+                currentReasoning = event.reasoning || currentReasoning;
+                outputArea.innerHTML = escapeHtml(currentTranslation);
+                reasoningBox.textContent = currentReasoning;
+                outCount.textContent = `${currentTranslation.length} characters`;
+                if (event.lookups) renderLookups(event.lookups);
+                setStatus('done', 'Complete');
+              }
+            } catch (err) {
+              console.error("Failed to parse SSE line:", dataStr, err);
+            }
+          }
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') {
+          console.log("Translation aborted by user.");
+        } else {
+          outputArea.textContent = `Error translating: ${err.message}. Please check API connection.`;
+          setStatus('ready', 'Error');
+        }
+      } finally {
+        isTranslating = false;
+        // remove cursor if still present
+        const cursor = outputArea.querySelector('.cursor');
+        if (cursor) cursor.remove();
+      }
+    }
+  </script>
+</body>
+</html>
