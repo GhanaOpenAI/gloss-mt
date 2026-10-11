@@ -1,4 +1,6 @@
-# Controllable Low-Resource Machine Translation via External Lexical Tool-Calling and Test-Time Domain Adaptation
+# GLOSS-MT: Grounding Generative LLMs with External Dictionaries for Low-Resource Machine Translation
+
+> **GLOSS-MT**: **G**rounded **L**exical **O**ffline **S**earch for **S**equence **T**ranslation using LLMs
 
 ## 1. Preamble & Motivation
 

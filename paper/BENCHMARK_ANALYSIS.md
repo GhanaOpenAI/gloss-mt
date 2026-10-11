@@ -18,7 +18,7 @@ Because **75 out of 84 documents (89.3%)** belong to a single historical storyte
 
 When disaggregating the contemporary, high-stakes operational domains (Finance, Statutory Legal, and Moral/Religious prose) from the historical folklore narratives, a clear distinction emerges between the base parametric model and our tool-calling architecture:
 
-| Domain / Corpus | Documents | Base Gemma 4 31B (`chrF2`) | Fine-Tuned + Expanded Dict (`chrF2`) | Relative Improvement |
+| Domain / Corpus | Documents | Base Gemma 4 31B (`chrF2`) | GLOSS-MT 31B (Expanded Dict) (`chrF2`) | Relative Improvement |
 |---|:---:|:---:|:---:|:---:|
 | **UDHR (Human Rights / Legal)** | 1 | 41.97 | **49.52** | **+7.55** |
 | **Watchtower (JW / Religious Prose)** | 5 | 57.57 | **60.12** | **+2.55** |
@@ -27,7 +27,7 @@ When disaggregating the contemporary, high-stakes operational domains (Finance, 
 | *Akan Folk-Tales (Rattray, 1930)* | 75 | **36.26** | 22.35 | -13.91 |
 | *Unweighted Macro Average (84 Docs)* | *84* | *45.44* | *44.86* | *-0.58* |
 
-On contemporary standard texts, **the fine-tuned tool-calling model consistently outperforms the base model across all domains (+3.86 chrF2 average gain)**, outperforming dedicated translation systems such as NLLB-200 3.3B and MADLAD-400.
+On contemporary standard texts, **GLOSS-MT consistently outperforms the base model across all domains (+3.86 chrF2 average gain)**, outperforming dedicated translation systems such as NLLB-200 3.3B and MADLAD-400.
 
 ---
 
