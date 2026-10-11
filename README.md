@@ -16,8 +16,16 @@ the results back and returns the translation.
 |---|---|
 | Dataset | [`ghanaopenai/twi-translation-tool-calling`](https://huggingface.co/datasets/ghanaopenai/twi-translation-tool-calling) |
 | Fine-tuned Model | [`ghanaopenai/twi-translator-gemma4-31b`](https://huggingface.co/ghanaopenai/twi-translator-gemma4-31b) |
+| Live Demo (Space) | [`ghanaopenai/twi-translator`](https://huggingface.co/spaces/ghanaopenai/twi-translator) |
 | Base model | `google/gemma-4-31B-it` (LoRA, language layers only) |
 | Dictionary | `twi_translate/data/twi_dictionary.tsv.gz`, 478,822 English→Twi phrases, offline |
+
+## Interactive Demo
+
+Try the live model in real time on Hugging Face Spaces:  
+👉 **[huggingface.co/spaces/ghanaopenai/twi-translator](https://huggingface.co/spaces/ghanaopenai/twi-translator)**
+
+Google Translate-style interface featuring real-time token streaming, live dictionary tool-calling against 478,822 entries, and dedicated linguistic reasoning inspection.
 
 ## How it works at inference
 
