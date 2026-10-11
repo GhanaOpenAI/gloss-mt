@@ -87,13 +87,24 @@ def evaluate_checkpoint(
     refs = [r for _, r in prompts_refs]
     hyps = []
 
+    # Identify all turn/sentence end tokens so the model stops immediately
+    eos_ids = []
+    if tok.eos_token_id is not None:
+        eos_ids.append(tok.eos_token_id)
+    for t_str in ["<turn|>", "<end_of_turn>", "<eos>", "<|im_end|>"]:
+        tid = tok.convert_tokens_to_ids(t_str)
+        if tid is not None and isinstance(tid, int) and tid not in eos_ids:
+            eos_ids.append(tid)
+
+    total_batches = (len(prompts) + batch_size - 1) // batch_size
     model.eval()
     with torch.inference_mode():
-        for i in range(0, len(prompts), batch_size):
+        for b_idx, i in enumerate(range(0, len(prompts), batch_size)):
             batch_prompts = prompts[i : i + batch_size]
             enc = tok(batch_prompts, return_tensors="pt", padding=True, truncation=True, max_length=4096)
             input_ids = enc["input_ids"].to(model.device)
             attention_mask = enc["attention_mask"].to(model.device)
+            prompt_len = input_ids.shape[1]
 
             out_ids = model.generate(
                 input_ids=input_ids,
@@ -101,14 +112,18 @@ def evaluate_checkpoint(
                 max_new_tokens=max_new_tokens,
                 do_sample=False,
                 pad_token_id=tok.pad_token_id or tok.eos_token_id,
+                eos_token_id=eos_ids,
             )
 
-            # Decode only the generated continuation
-            for in_len, gen in zip(input_ids, out_ids):
-                gen_tokens = gen[in_len.shape[0] :]
+            # Decode only the newly generated continuation
+            for gen in out_ids:
+                gen_tokens = gen[prompt_len:]
                 decoded = tok.decode(gen_tokens, skip_special_tokens=False)
                 clean_hyp = extract_translation(decoded)
                 hyps.append(clean_hyp)
+
+            if (b_idx + 1) % 5 == 0 or (b_idx + 1) == total_batches:
+                print(f"  [Progress] Generated {min(i + batch_size, len(prompts))}/{len(prompts)} examples...", flush=True)
 
     # Compute sacrebleu metrics
     bleu = sacrebleu.corpus_bleu(hyps, [refs])
@@ -161,6 +176,7 @@ def main():
 
     print(f"Loading tokenizer from {args.base}...")
     tok = AutoTokenizer.from_pretrained(args.base)
+    tok.padding_side = "left"
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
 
@@ -193,7 +209,7 @@ def main():
                         eval_loss = round(float(entry["eval_loss"]), 4)
                         break
 
-        print(f"\n--- Evaluating {ckpt_name} (Step {step}, Eval Loss: {eval_loss}) ---")
+        print(f"\n--- Evaluating {ckpt_name} (Step {step}, Eval Loss: {eval_loss}) ---", flush=True)
         peft_model = PeftModel.from_pretrained(base_model, ckpt)
 
         metrics = evaluate_checkpoint(
@@ -205,7 +221,8 @@ def main():
         results.append(metrics)
 
         print(
-            f"Result: Step {step} | Loss: {eval_loss} | BLEU: {metrics['bleu']} | chrF2: {metrics['chrf2']} | Length Ratio: {metrics['length_ratio']}"
+            f"Result: Step {step} | Loss: {eval_loss} | BLEU: {metrics['bleu']} | chrF2: {metrics['chrf2']} | Length Ratio: {metrics['length_ratio']}",
+            flush=True,
         )
 
         # Unload adapter to free memory for the next checkpoint
