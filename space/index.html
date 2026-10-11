@@ -856,9 +856,16 @@
                 reasoningBox.textContent = currentReasoning;
                 reasoningBox.scrollTop = reasoningBox.scrollHeight;
               } else if (event.type === 'translation') {
-                currentTranslation += event.delta;
-                outputArea.innerHTML = escapeHtml(currentTranslation) + '<span class="cursor"></span>';
-                outCount.textContent = `${currentTranslation.length} characters`;
+                // Guard: ensure no stray numbered reasoning lines ever enter the translation box
+                if (!currentTranslation && /^\s*\d+[\.\)]/.test(event.delta)) {
+                  currentReasoning += event.delta;
+                  reasoningBox.textContent = currentReasoning;
+                  reasoningBox.scrollTop = reasoningBox.scrollHeight;
+                } else {
+                  currentTranslation += event.delta;
+                  outputArea.innerHTML = escapeHtml(currentTranslation) + '<span class="cursor"></span>';
+                  outCount.textContent = `${currentTranslation.length} characters`;
+                }
               } else if (event.type === 'done') {
                 currentTranslation = event.translation || currentTranslation;
                 currentReasoning = event.reasoning || currentReasoning;
