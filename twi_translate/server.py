@@ -9,9 +9,17 @@ import threading
 
 def create_app(translator):
     from fastapi import FastAPI
+    from fastapi.middleware.cors import CORSMiddleware
     from pydantic import BaseModel
 
     app = FastAPI(title="Twi translator (tool-calling)")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     lock = threading.Lock()  # in-process transformers backend is not re-entrant
 
     class Req(BaseModel):
@@ -28,6 +36,7 @@ def create_app(translator):
             out = translator.translate(req.text, temperature=req.temperature)
         return {
             "translation": out["translation"],
+            "reasoning": out.get("reasoning", ""),
             "lookups": [{"phrases": l["call"]["arguments"].get("phrases", []), "result": l["result"]}
                         for l in out["lookups"]],
         }
