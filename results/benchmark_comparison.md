@@ -9,8 +9,8 @@ Comprehensive document-level benchmark evaluation on the `nsanku-mt-benchmark` s
 | **Gemini 3.8 Flash** | llm | **54.79** | 17.42 | 52.5 | 56.44 | 69.28 | 40.95 | 84 |
 | **Khaya AI** | api | **49.92** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
 | **Google Translate (free endpoint)** | api | **51.23** | 15.66 | 48.06 | 52.3 | 67.15 | 37.43 | 84 |
-| **Twi Translator (Gemma 4 31B + Tool Calling)** | llm | **47.17** | 6.57 | 44.99 | 49.36 | — | — | 4 |
-| **Gemma 4 31B Instruct (Base)** | llm | **43.97** | 10.82 | 45.97 | 41.97 | — | — | 4 |
+| **Twi Translator (Gemma 4 31B + Tool Calling)** | llm | **44.16** | 9.2 | 44.99 | 49.36 | 60.15 | 22.15 | 84 |
+| **Gemma 4 31B Instruct (Base)** | llm | **45.44** | 11.95 | 45.97 | 41.97 | 57.57 | 36.26 | 84 |
 | **NLLB-200 3.3B** | open | **47.68** | 14.15 | 45.25 | 52.05 | 56.89 | 36.54 | 84 |
 | **NLLB-200 1.3B** | open | **47.35** | 13.67 | 45.72 | 50.47 | 57.46 | 35.74 | 84 |
 | **NLLB-200 600M (distilled)** | open | **46.71** | 12.75 | 44.1 | 50.17 | 57.06 | 35.51 | 84 |
@@ -59,6 +59,8 @@ Moral, community, and religious prose.
 | Gemini 3.8 Flash | **69.28** | 5 |
 | Khaya AI | **65.78** | 5 |
 | Google Translate (free endpoint) | **67.15** | 5 |
+| Twi Translator (Gemma 4 31B + Tool Calling) | **60.15** | 5 |
+| Gemma 4 31B Instruct (Base) | **57.57** | 5 |
 | NLLB-200 3.3B | **56.89** | 5 |
 | NLLB-200 1.3B | **57.46** | 5 |
 | NLLB-200 600M (distilled) | **57.06** | 5 |
@@ -73,6 +75,8 @@ Oral literature and narrative storytelling covering 75 traditional folktales in 
 | Gemini 3.8 Flash | **40.95** | 75 |
 | Khaya AI | **36.22** | 75 |
 | Google Translate (free endpoint) | **37.43** | 75 |
+| Twi Translator (Gemma 4 31B + Tool Calling) | **22.15** | 75 |
+| Gemma 4 31B Instruct (Base) | **36.26** | 75 |
 | NLLB-200 3.3B | **36.54** | 75 |
 | NLLB-200 1.3B | **35.74** | 75 |
 | NLLB-200 600M (distilled) | **35.51** | 75 |

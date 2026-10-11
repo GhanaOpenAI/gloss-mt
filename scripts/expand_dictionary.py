@@ -19,7 +19,6 @@ from typing import Dict, List, Set
 import requests
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dataset_builder.phrases import clean_nominal, load_nlp
 from twi_translate.lookup import DEFAULT_PATH, TwiLookup
 
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
@@ -28,20 +27,26 @@ GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:ge
 def get_api_key() -> str:
     key = os.environ.get("GEMINI_API_KEY")
     if not key:
-        env_path = "/home/owusus/Documents/GitHub/nsanku-mt-benchmark/.env"
-        if os.path.exists(env_path):
-            for line in open(env_path):
-                if line.startswith("GEMINI_API_KEY="):
-                    key = line.split("=", 1)[1].strip()
-                    break
+        for env_path in [
+            "/mnt/volume_d2wey28/projects/nsanku-mt-benchmark/.env",
+            "/home/owusus/Documents/GitHub/nsanku-mt-benchmark/.env",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+        ]:
+            if os.path.exists(env_path):
+                for line in open(env_path):
+                    if line.startswith("GEMINI_API_KEY="):
+                        key = line.split("=", 1)[1].strip()
+                        break
+            if key:
+                break
     if not key:
         raise ValueError("GEMINI_API_KEY not found in environment or .env")
     return key
 
 
-def extract_missing_from_data(data_dir: str, nlp, lookup: TwiLookup) -> Counter:
-    """Scan train, validation, and test splits with spaCy to find all missing noun phrases."""
-    print("Extracting noun phrases with spaCy across dataset splits...", flush=True)
+def extract_missing_from_data(data_dir: str, lookup: TwiLookup) -> Counter:
+    """Scan train, validation, and test splits to find all missing noun phrases."""
+    print("Extracting missing noun phrases across dataset splits...", flush=True)
     counts = Counter()
     splits = ["train", "validation", "test"]
 
@@ -51,27 +56,18 @@ def extract_missing_from_data(data_dir: str, nlp, lookup: TwiLookup) -> Counter:
             continue
         print(f"  Scanning {path}...", flush=True)
         with open(path, "r", encoding="utf-8") as f:
-            for idx, line in enumerate(f):
+            for line in f:
                 ex = json.loads(line)
-                
-                # 1. Quoted tool phrases from the example
-                tool_phrases = ex.get("tool_phrases", [])
-                for p in tool_phrases:
+                tr = ex.get("tool_result", "")
+                m = re.search(r"Not found \(translate from your own knowledge\):\s*(.*)", tr)
+                if m:
+                    for p in [p.strip().lower() for p in m.group(1).split(",") if p.strip()]:
+                        if len(p) >= 3 and not lookup.lookup(p)["translations"]:
+                            counts[p] += 1
+                for p in ex.get("tool_phrases", []):
                     p_clean = p.strip().lower()
                     if len(p_clean) >= 3 and not lookup.lookup(p_clean)["translations"]:
                         counts[p_clean] += 1
-
-                # 2. Extract noun chunks using spaCy from the source English text
-                eng_text = ex.get("english", "")
-                if eng_text:
-                    doc = nlp(eng_text)
-                    for chunk in doc.noun_chunks:
-                        c_clean = clean_nominal(chunk)
-                        if c_clean and not lookup.lookup(c_clean)["translations"]:
-                            counts[c_clean] += 1
-
-                if idx > 0 and idx % 3000 == 0:
-                    print(f"    processed {idx:,} examples, {len(counts):,} unique missing phrases so far...", flush=True)
 
     print(f"Extraction complete: {len(counts):,} unique missing noun phrases found.", flush=True)
     return counts
@@ -122,10 +118,9 @@ def main():
 
     api_key = get_api_key()
     lookup = TwiLookup(path=args.dict)
-    nlp = load_nlp()
 
     # Step 1: Extract missing noun phrases
-    counts = extract_missing_from_data(args.data, nlp, lookup)
+    counts = extract_missing_from_data(args.data, lookup)
     phrases = [p for p, _ in counts.most_common(args.top_n if args.top_n > 0 else None)]
     print(f"Targeting {len(phrases):,} missing noun phrases for Gemini translation.", flush=True)
 
@@ -171,7 +166,7 @@ def main():
             new_entries_count += 1
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
-    with gzip.open(args.out, "wt", encoding="utf-8", compresslevel=9) as f:
+    with gzip.open(args.out, "wt", encoding="utf-8", compresslevel=1) as f:
         f.write("# English phrase -> Twi candidates (tab-separated). CC-BY-NC-4.0.\n")
         f.write(f"# Original SHOLA table + Gemini augmented ({new_entries_count:,} new terms).\n")
         for key in sorted(table):
