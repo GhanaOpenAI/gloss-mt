@@ -73,7 +73,7 @@ def extract_missing_from_data(data_dir: str, lookup: TwiLookup) -> Counter:
     return counts
 
 
-def translate_batch(batch: List[str], api_key: str, model: str = "gemini-2.5-flash") -> Dict[str, str]:
+def translate_batch(batch: List[str], api_key: str, model: str = "gemini-3.8-flash") -> Dict[str, str]:
     """Call Gemini to translate a batch of English noun phrases into Asante Twi."""
     prompt = (
         "Translate each English noun phrase into natural, native Asante Twi (Akan). "
@@ -110,7 +110,7 @@ def main():
     ap.add_argument("--dict", default=DEFAULT_PATH, help="Existing dictionary path")
     ap.add_argument("--out", default="twi_translate/data/twi_dictionary_expanded.tsv.gz")
     ap.add_argument("--checkpoint", default="data/gemini_translations_cache.json")
-    ap.add_argument("--model", default="gemini-2.5-flash")
+    ap.add_argument("--model", default="gemini-3.8-flash")
     ap.add_argument("--batch-size", type=int, default=50)
     ap.add_argument("--top-n", type=int, default=0, help="Limit to top N most frequent phrases (0 = all)")
     ap.add_argument("--workers", type=int, default=8)
