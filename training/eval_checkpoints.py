@@ -1,0 +1,224 @@
+"""Evaluate fine-tuning checkpoints on BLEU and chrF2 on the validation set.
+
+Loads the base model once and hot-swaps LoRA checkpoint adapters to evaluate:
+  - BLEU (sacrebleu)
+  - chrF2 (sacrebleu)
+  - Length ratio
+  - Evaluation loss (from trainer_state.json if available)
+
+Usage:
+  python training/eval_checkpoints.py \
+      --base /mnt/volume_d2wey28/models/gemma-4-E4B-it \
+      --checkpoints checkpoints/gemma4-e4b-twi-tool \
+      --data repo/data/validation.jsonl \
+      --limit 100  # or all 332
+"""
+
+import argparse
+import glob
+import json
+import os
+import re
+from typing import Dict, List, Tuple
+import sacrebleu
+import torch
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+TEMPLATE_KWARGS = {"enable_thinking": True}
+THOUGHT_RE = re.compile(r"<thought>.*?</thought>", re.DOTALL)
+
+
+def extract_translation(text: str) -> str:
+    """Extract translation by stripping thought tags or channels."""
+    # 1. Strip <thought>...</thought> if present
+    cleaned = THOUGHT_RE.sub("", text).strip()
+    # 2. Strip Gemma 4 channel tokens if present
+    if "<channel|>" in cleaned:
+        cleaned = cleaned.split("<channel|>")[-1].strip()
+    for stop_token in ["<turn|>", "<eos>", "<|im_end|>", "<|endoftext|>", "<end_of_turn>"]:
+        cleaned = cleaned.replace(stop_token, "").strip()
+    return cleaned.strip()
+
+
+def load_val_examples(data_path: str, limit: int = -1) -> List[Dict]:
+    examples = []
+    with open(data_path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            ex = json.loads(line)
+            examples.append(ex)
+            if 0 < limit <= len(examples):
+                break
+    return examples
+
+
+def build_prompt_and_ref(ex: Dict, tok) -> Tuple[str, str]:
+    """Prepare teacher-forced input prompt (system + user + tool calls + tool result) and reference translation."""
+    messages = [
+        {"role": "system", "content": ex["messages"][0]["content"]},
+        {"role": "user", "content": ex["messages"][1]["content"]},
+    ]
+    # Include tool call and tool result turns if present
+    for m in ex["messages"][2:]:
+        if m["role"] == "assistant" and m.get("tool_calls"):
+            messages.append(m)
+        elif m["role"] == "tool":
+            messages.append(m)
+        elif m["role"] == "assistant" and not m.get("tool_calls"):
+            # Target turn — stop here for generation prompt
+            break
+
+    tools = ex.get("tools")
+    prompt = tok.apply_chat_template(
+        messages, tools=tools, tokenize=False, add_generation_prompt=True, **TEMPLATE_KWARGS
+    )
+    ref = ex.get("translation", "").strip()
+    return prompt, ref
+
+
+def evaluate_checkpoint(
+    model, tok, examples: List[Dict], batch_size: int = 4, max_new_tokens: int = 512
+) -> Dict[str, float]:
+    prompts_refs = [build_prompt_and_ref(ex, tok) for ex in examples]
+    prompts = [p for p, _ in prompts_refs]
+    refs = [r for _, r in prompts_refs]
+    hyps = []
+
+    model.eval()
+    with torch.inference_mode():
+        for i in range(0, len(prompts), batch_size):
+            batch_prompts = prompts[i : i + batch_size]
+            enc = tok(batch_prompts, return_tensors="pt", padding=True, truncation=True, max_length=4096)
+            input_ids = enc["input_ids"].to(model.device)
+            attention_mask = enc["attention_mask"].to(model.device)
+
+            out_ids = model.generate(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+                max_new_tokens=max_new_tokens,
+                do_sample=False,
+                pad_token_id=tok.pad_token_id or tok.eos_token_id,
+            )
+
+            # Decode only the generated continuation
+            for in_len, gen in zip(input_ids, out_ids):
+                gen_tokens = gen[in_len.shape[0] :]
+                decoded = tok.decode(gen_tokens, skip_special_tokens=False)
+                clean_hyp = extract_translation(decoded)
+                hyps.append(clean_hyp)
+
+    # Compute sacrebleu metrics
+    bleu = sacrebleu.corpus_bleu(hyps, [refs])
+    chrf = sacrebleu.corpus_chrf(hyps, [refs], beta=2)
+
+    # Length ratio (words)
+    hyp_words = sum(len(h.split()) for h in hyps)
+    ref_words = sum(len(r.split()) for r in refs)
+    lr = hyp_words / max(1, ref_words)
+
+    return {
+        "bleu": round(bleu.score, 2),
+        "chrf2": round(chrf.score, 2),
+        "length_ratio": round(lr, 3),
+        "hyp_words": hyp_words,
+        "ref_words": ref_words,
+    }
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--base", required=True, help="Path or HF ID of base model")
+    ap.add_argument("--checkpoints", required=True, help="Directory containing checkpoint-* folders")
+    ap.add_argument("--data", required=True, help="Path to validation.jsonl")
+    ap.add_argument("--limit", type=int, default=100, help="Number of validation examples (default 100)")
+    ap.add_argument("--batch-size", type=int, default=4, help="Inference batch size")
+    ap.add_argument("--out", default=None, help="Output JSON path (defaults to <checkpoints>/eval_metrics.json)")
+    args = ap.parse_args()
+
+    # Find checkpoints sorted by step
+    ckpt_dirs = [
+        d for d in glob.glob(os.path.join(args.checkpoints, "checkpoint-*")) if os.path.isdir(d)
+    ]
+    if not ckpt_dirs:
+        print(f"No checkpoint-* directories found in {args.checkpoints}")
+        return
+
+    def get_step(path: str) -> int:
+        match = re.search(r"checkpoint-(\d+)", os.path.basename(path))
+        return int(match.group(1)) if match else 0
+
+    ckpt_dirs = sorted(ckpt_dirs, key=get_step)
+    print(f"Found {len(ckpt_dirs)} checkpoints: {[os.path.basename(d) for d in ckpt_dirs]}")
+
+    print(f"Loading tokenizer from {args.base}...")
+    tok = AutoTokenizer.from_pretrained(args.base)
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token
+
+    print(f"Loading validation examples from {args.data} (limit={args.limit})...")
+    examples = load_val_examples(args.data, limit=args.limit)
+    print(f"Loaded {len(examples)} examples.")
+
+    print(f"Loading base model in bfloat16 on GPU from {args.base}...")
+    base_model = AutoModelForCausalLM.from_pretrained(
+        args.base,
+        torch_dtype=torch.bfloat16,
+        attn_implementation="sdpa",
+        device_map={"": 0},
+    )
+
+    results = []
+
+    for ckpt in ckpt_dirs:
+        step = get_step(ckpt)
+        ckpt_name = os.path.basename(ckpt)
+
+        # Get eval_loss from trainer_state.json if available
+        trainer_state_path = os.path.join(ckpt, "trainer_state.json")
+        eval_loss = None
+        if os.path.exists(trainer_state_path):
+            with open(trainer_state_path) as f:
+                ts = json.load(f)
+                for entry in reversed(ts.get("log_history", [])):
+                    if "eval_loss" in entry and entry.get("step") == step:
+                        eval_loss = round(float(entry["eval_loss"]), 4)
+                        break
+
+        print(f"\n--- Evaluating {ckpt_name} (Step {step}, Eval Loss: {eval_loss}) ---")
+        peft_model = PeftModel.from_pretrained(base_model, ckpt)
+
+        metrics = evaluate_checkpoint(
+            peft_model, tok, examples, batch_size=args.batch_size
+        )
+        metrics["step"] = step
+        metrics["checkpoint"] = ckpt_name
+        metrics["eval_loss"] = eval_loss
+        results.append(metrics)
+
+        print(
+            f"Result: Step {step} | Loss: {eval_loss} | BLEU: {metrics['bleu']} | chrF2: {metrics['chrf2']} | Length Ratio: {metrics['length_ratio']}"
+        )
+
+        # Unload adapter to free memory for the next checkpoint
+        peft_model.unload()
+
+    # Print summary table
+    print("\n" + "=" * 75)
+    print(f"{'Checkpoint':<18} | {'Step':<6} | {'Loss':<8} | {'BLEU':<6} | {'chrF2':<6} | {'Length Ratio':<12}")
+    print("-" * 75)
+    for r in results:
+        loss_str = str(r["eval_loss"]) if r["eval_loss"] is not None else "N/A"
+        print(f"{r['checkpoint']:<18} | {r['step']:<6} | {loss_str:<8} | {r['bleu']:<6} | {r['chrf2']:<6} | {r['length_ratio']:<12}")
+    print("=" * 75)
+
+    out_file = args.out or os.path.join(args.checkpoints, "eval_metrics.json")
+    with open(out_file, "w", encoding="utf-8") as f:
+        json.dump(results, f, indent=2)
+    print(f"\nSaved metrics to {out_file}")
+
+
+if __name__ == "__main__":
+    main()
