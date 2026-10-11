@@ -10,6 +10,7 @@ Comprehensive document-level benchmark evaluation on the `nsanku-mt-benchmark` s
 | **Khaya AI** | api | **49.92** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
 | **Google Translate (free endpoint)** | api | **51.23** | 15.66 | 48.06 | 52.3 | 67.15 | 37.43 | 84 |
 | **Twi Translator (Gemma 4 31B + Tool Calling)** | llm | **44.16** | 9.2 | 44.99 | 49.36 | 60.15 | 22.15 | 84 |
+| **Twi Translator (Gemma 4 31B + Expanded Dict)** | llm | **44.86** | 11.12 | 47.45 | 49.52 | 60.12 | 22.35 | 84 |
 | **Gemma 4 31B Instruct (Base)** | llm | **45.44** | 11.95 | 45.97 | 41.97 | 57.57 | 36.26 | 84 |
 | **NLLB-200 3.3B** | open | **47.68** | 14.15 | 45.25 | 52.05 | 56.89 | 36.54 | 84 |
 | **NLLB-200 1.3B** | open | **47.35** | 13.67 | 45.72 | 50.47 | 57.46 | 35.74 | 84 |
@@ -28,6 +29,7 @@ Technical and administrative domain covering national budgetary allocations, pol
 | Khaya AI | 48.33 | 46.57 | 48.33 | **47.74** |
 | Google Translate (free endpoint) | 49.12 | 46.47 | 48.6 | **48.06** |
 | Twi Translator (Gemma 4 31B + Tool Calling) | 50.85 | 41.65 | 42.48 | **44.99** |
+| Twi Translator (Gemma 4 31B + Expanded Dict) | 46.95 | 46.82 | 48.59 | **47.45** |
 | Gemma 4 31B Instruct (Base) | 46.27 | 44.3 | 47.34 | **45.97** |
 | NLLB-200 3.3B | 46.06 | 43.54 | 46.14 | **45.25** |
 | NLLB-200 1.3B | 46.24 | 43.75 | 47.16 | **45.72** |
@@ -44,6 +46,7 @@ Formal legalistic text translated into Ghanaian languages.
 | Khaya AI | **49.92** | 8.06 | 1.032 | 2265 / 2098 |
 | Google Translate (free endpoint) | **52.3** | 9.29 | 0.881 | 1909 / 2098 |
 | Twi Translator (Gemma 4 31B + Tool Calling) | **49.36** | 4.55 | 0.899 | 1969 / 2098 |
+| Twi Translator (Gemma 4 31B + Expanded Dict) | **49.52** | 5.1 | 0.893 | 1953 / 2098 |
 | Gemma 4 31B Instruct (Base) | **41.97** | 4.26 | 1.566 | 3480 / 2098 |
 | NLLB-200 3.3B | **52.05** | 10.45 | 0.92 | 1989 / 2098 |
 | NLLB-200 1.3B | **50.47** | 8.12 | 0.956 | 2073 / 2098 |
@@ -60,6 +63,7 @@ Moral, community, and religious prose.
 | Khaya AI | **65.78** | 5 |
 | Google Translate (free endpoint) | **67.15** | 5 |
 | Twi Translator (Gemma 4 31B + Tool Calling) | **60.15** | 5 |
+| Twi Translator (Gemma 4 31B + Expanded Dict) | **60.12** | 5 |
 | Gemma 4 31B Instruct (Base) | **57.57** | 5 |
 | NLLB-200 3.3B | **56.89** | 5 |
 | NLLB-200 1.3B | **57.46** | 5 |
@@ -76,6 +80,7 @@ Oral literature and narrative storytelling covering 75 traditional folktales in 
 | Khaya AI | **36.22** | 75 |
 | Google Translate (free endpoint) | **37.43** | 75 |
 | Twi Translator (Gemma 4 31B + Tool Calling) | **22.15** | 75 |
+| Twi Translator (Gemma 4 31B + Expanded Dict) | **22.35** | 75 |
 | Gemma 4 31B Instruct (Base) | **36.26** | 75 |
 | NLLB-200 3.3B | **36.54** | 75 |
 | NLLB-200 1.3B | **35.74** | 75 |
