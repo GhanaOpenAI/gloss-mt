@@ -29,6 +29,9 @@ configs:
 
 # Twi Translation Tool-Calling with Reasoning
 
+**Author:** [Ghana Open AI](https://huggingface.co/ghanaopenai)  
+**Supported by:** [Ghana NLP](https://ghananlp.org)  
+
 SFT data that teaches an LLM to translate English into Twi (Akan) like a careful translator:
 
 1. **look up** the key English noun phrases in a dictionary (`lookup_twi_translation` tool call),
