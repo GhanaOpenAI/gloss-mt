@@ -237,15 +237,15 @@ class TwiTranslator:
             yield {"type": "done", "translation": content, "reasoning": "", "lookups": []}
             return
 
+        messages.append({
+            "role": "assistant", "content": content,
+            "tool_calls": [{"id": c["id"], "type": "function",
+                            "function": {"name": c["name"], "arguments": c["arguments"]}} for c in calls],
+        })
         results = []
         for c in calls:
             res = self.run_tool(c)
             results.append({"call": c, "result": res})
-            messages.append({
-                "role": "assistant", "content": content,
-                "tool_calls": [{"id": c["id"], "type": "function",
-                                "function": {"name": c["name"], "arguments": c["arguments"]}}],
-            })
             messages.append({"role": "tool", "tool_call_id": c["id"], "name": TOOL_NAME, "content": res})
 
         lookups_info = [{"phrases": r["call"]["arguments"].get("phrases", []), "result": r["result"]} for r in results]
@@ -259,19 +259,39 @@ class TwiTranslator:
                 temperature=temperature,
                 max_tokens=self.backend.max_tokens,
                 stream=True,
-                extra_body={"chat_template_kwargs": TEMPLATE_KWARGS},
             )
             full_output = []
+            current_stream_text = ""
+            in_translation = False
             for chunk in stream:
                 piece = chunk.choices[0].delta.content or ""
-                if piece:
-                    full_output.append(piece)
-                    yield {"type": "token", "delta": piece}
+                if not piece:
+                    continue
+                full_output.append(piece)
+                current_stream_text += piece
+
+                if not in_translation:
+                    if "<channel|>" in current_stream_text:
+                        parts = current_stream_text.split("<channel|>", 1)
+                        in_translation = True
+                        clean_tail = parts[1].replace("<|turn>", "").replace("<turn|>", "")
+                        if clean_tail:
+                            yield {"type": "translation", "delta": clean_tail}
+                    else:
+                        lines = current_stream_text.split("\n")
+                        if len(lines) > 1 and lines[-1].strip() and not re.match(r"^\d+\.", lines[-1].strip()):
+                            in_translation = True
+                            yield {"type": "translation", "delta": lines[-1].strip()}
+                        else:
+                            yield {"type": "reasoning", "delta": piece}
+                else:
+                    clean_piece = piece.replace("<|turn>", "").replace("<turn|>", "")
+                    yield {"type": "translation", "delta": clean_piece}
 
             full_text = "".join(full_output)
             reasoning, translation = split_reasoning(full_text)
             yield {"type": "done", "translation": translation, "reasoning": reasoning, "lookups": lookups_info}
         else:
             content, _, reasoning = self.backend.chat(messages, None, temperature)
-            yield {"type": "token", "delta": content}
+            yield {"type": "translation", "delta": content}
             yield {"type": "done", "translation": content, "reasoning": reasoning, "lookups": lookups_info}
