@@ -17,7 +17,7 @@ Two interchangeable backends:
 import json
 import re
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from .lookup import TwiLookup
 from .schema import SYSTEM_PROMPT, TOOL_NAME, TOOLS, USER_TEMPLATES, format_tool_result
@@ -224,3 +224,54 @@ class TwiTranslator:
         # Tool budget used up: ask for the final answer without offering tools.
         content, _, reasoning = self.backend.chat(messages, None, temperature)
         return {"translation": content, "reasoning": reasoning, "lookups": lookups, "messages": messages}
+
+    def translate_stream(self, text: str, temperature: float = 0.0) -> Iterator[Dict[str, Any]]:
+        messages: List[Dict] = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": USER_TEMPLATES[0].format(text=text)},
+        ]
+        yield {"type": "status", "stage": "analyzing"}
+        content, calls, _ = self.backend.chat(messages, TOOLS, temperature)
+        if not calls:
+            yield {"type": "token", "delta": content}
+            yield {"type": "done", "translation": content, "reasoning": "", "lookups": []}
+            return
+
+        results = []
+        for c in calls:
+            res = self.run_tool(c)
+            results.append({"call": c, "result": res})
+            messages.append({
+                "role": "assistant", "content": content,
+                "tool_calls": [{"id": c["id"], "type": "function",
+                                "function": {"name": c["name"], "arguments": c["arguments"]}}],
+            })
+            messages.append({"role": "tool", "tool_call_id": c["id"], "name": TOOL_NAME, "content": res})
+
+        lookups_info = [{"phrases": r["call"]["arguments"].get("phrases", []), "result": r["result"]} for r in results]
+        yield {"type": "lookups", "lookups": lookups_info}
+        yield {"type": "status", "stage": "generating"}
+
+        if hasattr(self.backend, "client"):
+            stream = self.backend.client.chat.completions.create(
+                model=self.backend.model,
+                messages=self.backend._to_api(messages),
+                temperature=temperature,
+                max_tokens=self.backend.max_tokens,
+                stream=True,
+                extra_body={"chat_template_kwargs": TEMPLATE_KWARGS},
+            )
+            full_output = []
+            for chunk in stream:
+                piece = chunk.choices[0].delta.content or ""
+                if piece:
+                    full_output.append(piece)
+                    yield {"type": "token", "delta": piece}
+
+            full_text = "".join(full_output)
+            reasoning, translation = split_reasoning(full_text)
+            yield {"type": "done", "translation": translation, "reasoning": reasoning, "lookups": lookups_info}
+        else:
+            content, _, reasoning = self.backend.chat(messages, None, temperature)
+            yield {"type": "token", "delta": content}
+            yield {"type": "done", "translation": content, "reasoning": reasoning, "lookups": lookups_info}

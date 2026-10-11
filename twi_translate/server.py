@@ -41,6 +41,18 @@ def create_app(translator):
                         for l in out["lookups"]],
         }
 
+    @app.post("/translate/stream")
+    def translate_stream_endpoint(req: Req):
+        import json
+        from fastapi.responses import StreamingResponse
+
+        def event_generator():
+            with lock:
+                for event in translator.translate_stream(req.text, temperature=req.temperature):
+                    yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
+
     return app
 
 
