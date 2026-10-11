@@ -115,6 +115,8 @@ def main():
     ap.add_argument("--eval-steps", type=int, default=100)
     ap.add_argument("--backend", choices=["unsloth", "hf"], default="unsloth")
     ap.add_argument("--load-in-4bit", action="store_true", help="QLoRA (unsloth backend)")
+    ap.add_argument("--early-stopping-patience", type=int, default=3, help="Stop after N evals without eval_loss improvement (0 = disable)")
+    ap.add_argument("--save-total-limit", type=int, default=None, help="Max checkpoints to keep (default: None, save all)")
     args = ap.parse_args()
 
     if args.backend == "unsloth":
@@ -142,6 +144,11 @@ def main():
     model = load_model(args)
     model.print_trainable_parameters()
 
+    callbacks = []
+    if args.early_stopping_patience > 0:
+        from transformers import EarlyStoppingCallback
+        callbacks.append(EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience, early_stopping_threshold=0.001))
+
     targs = TrainingArguments(
         output_dir=args.out,
         num_train_epochs=args.epochs,
@@ -161,7 +168,9 @@ def main():
         eval_steps=args.eval_steps,
         save_strategy="steps",
         save_steps=args.eval_steps,
-        save_total_limit=3,
+        save_total_limit=args.save_total_limit,
+        load_best_model_at_end=args.early_stopping_patience > 0,
+        metric_for_best_model="eval_loss" if args.early_stopping_patience > 0 else None,
         report_to="none",
         dataloader_num_workers=2,
         remove_unused_columns=False,
@@ -169,6 +178,7 @@ def main():
     trainer = Trainer(
         model=model, args=targs, train_dataset=ds["train"], eval_dataset=ds["validation"],
         data_collator=DataCollatorForSeq2Seq(tok, padding=True, label_pad_token_id=IGNORE),
+        callbacks=callbacks,
     )
     has_ckpt = os.path.isdir(args.out) and any(d.startswith("checkpoint-") for d in os.listdir(args.out))
     trainer.train(resume_from_checkpoint=True if has_ckpt else None)

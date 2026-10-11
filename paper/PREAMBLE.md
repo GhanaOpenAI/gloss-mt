@@ -1,0 +1,30 @@
+# Controllable Low-Resource Machine Translation via External Lexical Tool-Calling and Test-Time Domain Adaptation
+
+## 1. Preamble & Motivation
+
+### 1.1 The Low-Resource Parallel Corpus Bottleneck
+Building high-fidelity machine translation (MT) systems for low-resource languages—particularly African languages such as Twi (Akan)—remains fundamentally constrained by the scarcity of parallel sentence-level corpora. Traditional supervised sequence-to-sequence architectures and generative large language models (LLMs) depend heavily on millions of verified bilingual sentence pairs to learn semantic alignment, morphological rules, and lexical mappings simultaneously. 
+
+However, collecting sentence-level parallel text in low-resource environments is cost-prohibitive: it demands deep involvement from specialized bilingual native speakers, professional translators, and linguists who must manually translate, curate, and review long narrative documents. For many global languages with tens of millions of speakers, available parallel digital text constitutes only a fraction of what state-of-the-art MT systems require.
+
+### 1.2 Lowering Community Participation to Lexical Contributions
+Our approach introduces a structural paradigm shift that radically reduces the barrier to native-speaker participation. Instead of demanding thousands of annotated bilingual sentence pairs from scarce linguistic experts, our method reduces the requirement for language community participation to **contributing bilingual wordlists and terminology mappings**.
+
+Lexical documentation (e.g., wordlists, bilingual glossaries, Webinary dictionaries, Wiktionary entries, and SIL language lexicons) has historically been the primary, most accessible mechanism through which linguistic field researchers and native language speakers document emerging and under-resourced languages. By decoupling lexical knowledge retrieval from syntactic sentence generation:
+1. Native speakers and community contributors need only provide translations for isolated noun phrases, idioms, and specialized terms.
+2. The fine-tuned LLM leverages its pre-trained general linguistic reasoning to handle grammatical morphology, subject-verb concord, tense marking, and discourse structure around the retrieved terms.
+This framework turns hundreds of years of static field-linguistic wordlists into actionable, dynamic machine translation assets.
+
+### 1.3 Deterministic Controllability and Hallucination Mitigation
+Even state-of-the-art closed and open LLMs (as well as dedicated neural MT systems) frequently hallucinate when translating low-resource languages. They invent plausible-sounding but erroneous vocabulary, substitute loanwords indiscriminately, or omit nuanced technical terms. In mission-critical deployments—such as public health communication, statutory legal texts (e.g., the Universal Declaration of Human Rights), and national finance budgets—such lexical hallucinations present unacceptable real-world risks.
+
+By formulating translation as an agentic tool-calling trajectory (`input text` → `extract noun phrases` → `tool query` → `grounded lexical context` → `linguistic reasoning` → `final translation`), our model is constrained to adhere to verified reference vocabulary. The model learns to incorporate user-supplied and verified terminology where it fits, and only fall back to parametric knowledge when a term is explicitly marked as absent. This provides deploying organizations with **deterministic terminological control**.
+
+### 1.4 Zero-Parameter Test-Time Domain Adaptation
+In production environments, deploying institutions frequently require standardized or domain-specific terminology (e.g., ministry-approved budgetary phrasing, legal jurisprudence, medical terms, or dialectal variants). With conventional neural MT models, adapting to a new domain necessitates gathering parallel in-domain sentences and performing expensive fine-tuning.
+
+Our architecture enables **zero-shot, zero-parameter test-time domain adaptation**:
+- When deploying to an unseen target domain, operators simply extract the target domain's noun phrases and augment the external lookup dictionary.
+- The model immediately incorporates the newly supplied vocabulary into its reasoning and translation output without requiring a single gradient step or parameter update.
+
+We empirically validate this capability by demonstrating that augmenting the lookup dictionary with target-domain terminology yields immediate, measurable improvements across benchmark evaluations (Citizens' Budget, Universal Declaration of Human Rights, Watchtower prose, and traditional Akan Folk-Tales).
