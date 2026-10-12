@@ -144,15 +144,17 @@ def evaluate_checkpoint(
     gemini_tier = None
     try:
         import gemini_score
+        api_key = os.environ.get("GEMINI_API_KEY")
+        emb_model = os.environ.get("GEMINI_EMBEDDING_MODEL", "gemini-embedding-2")
         # 1. Target semantic similarity (Twi Hypothesis vs Twi Reference)
-        res_ref = gemini_score.score(hyps, refs)
+        res_ref = gemini_score.score(hyps, refs, api_key=api_key, model=emb_model)
         gemini_sem_ref = round(res_ref.score, 2)
         gemini_tier = res_ref.tier
 
         # 2. Cross-lingual semantic similarity (Twi Hypothesis vs English Source)
         srcs = [ex.get("english", "") for ex in examples]
         if any(srcs):
-            res_src = gemini_score.score(hyps, srcs)
+            res_src = gemini_score.score(hyps, srcs, api_key=api_key, model=emb_model)
             gemini_sem_src = round(res_src.score, 2)
     except Exception as e:
         print(f"  [Notice] GeminiScore skipped: {e}", flush=True)
@@ -172,6 +174,7 @@ def evaluate_checkpoint(
         "length_ratio": round(lr, 3),
         "hyp_words": hyp_words,
         "ref_words": ref_words,
+        "predictions": hyps,
     }
 
 
@@ -251,6 +254,19 @@ def main():
         metrics["step"] = step
         metrics["checkpoint"] = ckpt_name
         metrics["eval_loss"] = eval_loss
+
+        # Save individual checkpoint predictions
+        preds_file = os.path.join(args.checkpoints, f"preds_{step}.json")
+        hyps_pred = metrics.pop("predictions", [])
+        with open(preds_file, "w", encoding="utf-8") as f:
+            json.dump({
+                "step": step,
+                "checkpoint": ckpt_name,
+                "predictions": hyps_pred,
+                "references": [ex.get("translation", "") for ex in examples],
+                "sources": [ex.get("english", "") for ex in examples],
+            }, f, indent=2)
+
         results.append(metrics)
 
         print(
@@ -274,9 +290,21 @@ def main():
     print("=" * 105, flush=True)
 
     out_file = args.out or os.path.join(args.checkpoints, "eval_metrics.json")
+    existing = []
+    if os.path.exists(out_file):
+        try:
+            with open(out_file, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+        except Exception:
+            existing = []
+    by_step = {r["step"]: r for r in existing}
+    for r in results:
+        by_step[r["step"]] = r
+    merged_results = sorted(by_step.values(), key=lambda x: x["step"])
+
     with open(out_file, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2)
-    print(f"\nSaved metrics to {out_file}")
+        json.dump(merged_results, f, indent=2)
+    print(f"\nSaved {len(merged_results)} metrics to {out_file}")
 
 
 if __name__ == "__main__":

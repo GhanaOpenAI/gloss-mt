@@ -3,9 +3,9 @@
 The output has the same layout as the base checkpoint (plus the base tokenizer, processor,
 chat template and generation config), so it can be served exactly like the base model:
 
-  python training/merge_lora.py --base /mnt/volume_d2wey28/models/gemma-4-31B-it \\
-      --adapter checkpoints/gemma4-31b-twi-tool/adapter --out checkpoints/gemma4-31b-twi-tool/merged
-  vllm serve checkpoints/gemma4-31b-twi-tool/merged ...
+  python training/merge_lora.py --base /mnt/volume_d2wey28/models/gemma-4-E4B-it \\
+      --adapter checkpoints/gemma4-e4b-twi-tool/adapter --out checkpoints/gemma4-e4b-twi-tool/merged
+  vllm serve checkpoints/gemma4-e4b-twi-tool/merged ...
 """
 
 import argparse

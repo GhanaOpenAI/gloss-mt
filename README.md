@@ -15,9 +15,9 @@ the results back and returns the translation.
 | Artifact | Where |
 |---|---|
 | Dataset | [`ghanaopenai/twi-translation-tool-calling`](https://huggingface.co/datasets/ghanaopenai/twi-translation-tool-calling) |
-| Fine-tuned Model | [`ghanaopenai/twi-translator-gemma4-31b`](https://huggingface.co/ghanaopenai/twi-translator-gemma4-31b) |
+| Fine-tuned Model | [`ghanaopenai/twi-translator-gemma4-e4b`](https://huggingface.co/ghanaopenai/twi-translator-gemma4-e4b) |
 | Live Demo (Space) | [`ghanaopenai/twi-translator`](https://huggingface.co/spaces/ghanaopenai/twi-translator) |
-| Base model | `google/gemma-4-31B-it` (LoRA, language layers only) |
+| Base model | `google/gemma-4-E4B-it` (4B parameter compact model, LoRA on language layers) |
 | Dictionary | `twi_translate/data/twi_dictionary.tsv.gz`, 478,822 English→Twi phrases, offline |
 
 ## Interactive Demo
@@ -56,7 +56,7 @@ Or serve with vLLM and use the client backend:
 
 ```bash
 pip install -e ".[client]"
-vllm serve ghanaopenai/twi-translator-gemma4-31b --served-model-name twi-translator --max-model-len 8192 \
+vllm serve ghanaopenai/twi-translator-gemma4-e4b --served-model-name twi-translator --max-model-len 8192 \
     --enable-auto-tool-choice --tool-call-parser gemma4 --reasoning-parser gemma4
 twi-translate --base-url http://localhost:8000/v1 --model twi-translator -v "Did you hear the matter in court?"
 ```
@@ -113,12 +113,12 @@ Rebuild it with `python -m twi_translate.lookup --rebuild`.
 ## Training
 
 ```bash
-# Unsloth (bf16 LoRA r=32 on the language model; vision/audio towers frozen)
-python training/train_sft.py --backend unsloth --model google/gemma-4-31B-it --data data \
-    --out checkpoints/gemma4-31b-twi-tool
-# merge the adapter into the bf16 base -> standalone model for vLLM / transformers
-python training/merge_lora.py --base google/gemma-4-31B-it \
-    --adapter checkpoints/gemma4-31b-twi-tool/adapter --out checkpoints/gemma4-31b-twi-tool/merged
+# SFT Fine-Tuning (bf16 LoRA r=32 on language model; vision/audio towers frozen)
+python training/train_sft.py --backend hf --model google/gemma-4-E4B-it --data data \
+    --out checkpoints/gemma4-e4b-twi-tool --epochs 5 --lr 2e-4
+# Merge the adapter into the bf16 base -> standalone model for vLLM / transformers
+python training/merge_lora.py --base google/gemma-4-E4B-it \
+    --adapter checkpoints/gemma4-e4b-twi-tool/adapter --out checkpoints/gemma4-e4b-twi-tool/merged
 ```
 
 Loss is only on the tokens the model generates at inference: the tool call (including the

@@ -12,11 +12,11 @@ Two backends: `unsloth` (default; Unsloth kernels + offloaded gradient checkpoin
 only and save the adapter; merge it into the bf16 base with training/merge_lora.py.
 
 Usage (H200):
-  python training/train_sft.py --model /mnt/volume_d2wey28/models/gemma-4-31B-it \\
-      --data data --out checkpoints/gemma4-31b-twi-tool --load-in-4bit
+  python training/train_sft.py --model /mnt/volume_d2wey28/models/gemma-4-E4B-it \
+      --data data --out checkpoints/gemma4-e4b-twi-tool --backend hf
   python training/train_sft.py ... --max-steps 20   # throughput pilot
-  python training/merge_lora.py --base /mnt/volume_d2wey28/models/gemma-4-31B-it \\
-      --adapter checkpoints/gemma4-31b-twi-tool/adapter --out checkpoints/gemma4-31b-twi-tool/merged
+  python training/merge_lora.py --base /mnt/volume_d2wey28/models/gemma-4-E4B-it \
+      --adapter checkpoints/gemma4-e4b-twi-tool/adapter --out checkpoints/gemma4-e4b-twi-tool/merged
 """
 
 import argparse
@@ -102,18 +102,18 @@ def load_model(args):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", default="google/gemma-4-31B-it")
+    ap.add_argument("--model", default="google/gemma-4-E4B-it")
     ap.add_argument("--data", default="data")
-    ap.add_argument("--out", default="checkpoints/gemma4-31b-twi-tool")
+    ap.add_argument("--out", default="checkpoints/gemma4-e4b-twi-tool")
     ap.add_argument("--max-len", type=int, default=6144)
-    ap.add_argument("--epochs", type=float, default=1)
+    ap.add_argument("--epochs", type=float, default=5)
     ap.add_argument("--max-steps", type=int, default=-1)
-    ap.add_argument("--lr", type=float, default=1e-4)
-    ap.add_argument("--batch-size", type=int, default=1)
-    ap.add_argument("--grad-accum", type=int, default=16)
+    ap.add_argument("--lr", type=float, default=2e-4)
+    ap.add_argument("--batch-size", type=int, default=2)
+    ap.add_argument("--grad-accum", type=int, default=8)
     ap.add_argument("--lora-r", type=int, default=32)
-    ap.add_argument("--eval-steps", type=int, default=100)
-    ap.add_argument("--backend", choices=["unsloth", "hf"], default="unsloth")
+    ap.add_argument("--eval-steps", type=int, default=150)
+    ap.add_argument("--backend", choices=["unsloth", "hf"], default="hf")
     ap.add_argument("--load-in-4bit", action="store_true", help="QLoRA (unsloth backend)")
     ap.add_argument("--early-stopping-patience", type=int, default=3, help="Stop after N evals without eval_loss improvement (0 = disable)")
     ap.add_argument("--save-total-limit", type=int, default=None, help="Max checkpoints to keep (default: None, save all)")

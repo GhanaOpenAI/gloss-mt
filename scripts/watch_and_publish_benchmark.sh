@@ -21,7 +21,7 @@ while true; do
 done
 
 echo "=== Syncing benchmark outputs from H200 ==="
-rsync -az h200:/mnt/volume_d2wey28/projects/nsanku-mt-benchmark/translations/twi-translator-gemma4-31b-expanded-dict/ "$BENCH_LOCAL/translations/twi-translator-gemma4-31b-expanded-dict/"
+rsync -az h200:/mnt/volume_d2wey28/projects/nsanku-mt-benchmark/translations/twi-translator-gemma4-e4b*/ "$BENCH_LOCAL/translations/"
 rsync -az h200:/mnt/volume_d2wey28/projects/nsanku-mt-benchmark/benchmarks/twi_asante.yaml "$BENCH_LOCAL/benchmarks/twi_asante.yaml"
 
 cd "$BENCH_LOCAL"
@@ -30,7 +30,7 @@ python3 run_benchmark.py --assemble
 
 echo "=== Pushing benchmark results to GitHub GhanaNLP/nsanku-mt-benchmark ==="
 git add benchmarks/ space/ translations/
-git commit -m "feat(benchmarks): add twi-translator-gemma4-31b-expanded-dict complete benchmark scores" || true
+git commit -m "feat(benchmarks): add Gemma 4 E4B complete benchmark scores" || true
 git push origin main || true
 
 echo "=== Updating paper comparison tables in project repo ==="
