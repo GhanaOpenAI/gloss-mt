@@ -41,7 +41,9 @@ Evaluated across the comprehensive document-level `nsanku-mt-benchmark` suite (*
 
 | Model | Track / Architecture | Parameters | **chrF2 (Avg)** | **BLEU** | Finance (3 Docs) | UDHR (Legal) | Watchtower (5 Docs) | Folktales (75 Docs) |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Gemini 3.8 Flash** | Commercial LLM | Cloud | **54.64** | 17.25 | 52.50 | 56.44 | 69.28 | 40.33 |
 | **Google Translate** | Commercial API | Cloud | **51.26** | 15.67 | 48.06 | 52.30 | 67.15 | 37.54 |
+| **Khaya AI** | Commercial API | Cloud | **49.91** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 |
 | **GLOSS-MT (Ours)** | **LLM + Offline Tool** | **4B** | **49.75** | **11.45** | **51.23** | **50.80** | **60.75** | **36.23** |
 | **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 |
 | **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 |
@@ -54,11 +56,11 @@ Evaluated across the comprehensive document-level `nsanku-mt-benchmark` suite (*
 
 ### Key Empirical Findings
 
-1. **Outperforms All Open Translation Systems**: At just 4 billion parameters, **GLOSS-MT beats all open-source models** on the benchmark, including Meta's NLLB-200 3.3B (`49.75` vs `47.68`), Google's MADLAD-400 10B (`49.75` vs `38.39`), and Google's Gemma 4 31B Base (`49.75` vs `45.44`).
-2. **Domain Champion on Technical Finance**: On national budgetary and fiscal documents (Ministry of Finance, 2021–2023), GLOSS-MT achieves **`51.23 chrF2`**, outperforming Google Translate (`48.06`), NLLB-200 3.3B (`45.25`), and Gemma 4 31B (`45.97`).
-3. **Statutory & Legal Rights (UDHR)**: Achieves **`50.80 chrF2`**, completely eliminating the severe hallucination and verbose repetition exhibited by base LLMs (`41.97` on Gemma 31B).
-4. **Religious Literature (Watchtower)**: Reaches **`60.75 chrF2`** and **`18.92 BLEU`**, outperforming all NLLB and MADLAD open models by +3 to +10 chrF points.
-5. **Authentic Oral Folklore (Akan Folktales)**: Scores **`36.23 chrF2`** across 75 historical narrative stories (Rattray 1930) with exact sentence-bounded length fidelity (length ratio 1.19).
+1. **Outperforms All Open Translation Systems**: At just 4 billion parameters, **GLOSS-MT beats all open-source models** on the benchmark, including Meta's NLLB-200 3.3B (`49.75` vs `47.74`), NLLB-200 1.3B (`49.75` vs `47.42`), MADLAD-400 3B (`49.75` vs `37.14`), and Google's Gemma 4 31B Base (`49.75` vs `45.55`).
+2. **Domain Champion on Technical Finance**: On national budgetary and fiscal documents (Ministry of Finance, 2021–2023), GLOSS-MT achieves **`51.23 chrF2`**, outperforming Google Translate (`48.06`), Khaya AI (`47.74`), NLLB-200 3.3B (`45.25`), and Gemma 4 31B (`45.97`), placing second only to Gemini 3.8 Flash (`52.50`).
+3. **Statutory & Legal Rights (UDHR)**: Achieves **`50.80 chrF2`**, outperforming Khaya AI (`49.92`) and completely eliminating the severe hallucination and verbose repetition exhibited by base LLMs (`41.97` on Gemma 31B Base; `3.84` on Gemma 4B Base).
+4. **Religious Literature (Watchtower)**: Reaches **`60.75 chrF2`** and **`18.92 BLEU`**, outperforming Gemma 4 31B Base (`57.57`) and all NLLB models by +3 to +4 chrF points.
+5. **Authentic Oral Folklore (Akan Folktales)**: Scores **`36.23 chrF2`** across 75 historical narrative stories (Rattray 1930) with exact sentence-bounded length fidelity (length ratio 1.19), matching Khaya AI (`36.22`) and Gemma 4 31B Base (`36.71`).
 
 ---
 
