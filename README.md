@@ -16,14 +16,14 @@ the results back and returns the translation.
 |---|---|
 | Dataset | [`ghanaopenai/twi-translation-tool-calling`](https://huggingface.co/datasets/ghanaopenai/twi-translation-tool-calling) |
 | Fine-tuned Model | [`ghanaopenai/gloss-mt`](https://huggingface.co/ghanaopenai/gloss-mt) |
-| Live Demo (Space) | [`ghanaopenai/twi-translator`](https://huggingface.co/spaces/ghanaopenai/twi-translator) |
+| Live Demo (Space) | [`ghanaopenai/gloss-mt`](https://huggingface.co/spaces/ghanaopenai/gloss-mt) |
 | Base model | `google/gemma-4-E4B-it` (4B parameter compact model, LoRA on language layers) |
 | Dictionary | `twi_translate/data/twi_dictionary.tsv.gz`, 478,822 English→Twi phrases, offline |
 
 ## Interactive Demo
 
 Try the live model in real time on Hugging Face Spaces:  
-👉 **[huggingface.co/spaces/ghanaopenai/twi-translator](https://huggingface.co/spaces/ghanaopenai/twi-translator)**
+👉 **[huggingface.co/spaces/ghanaopenai/gloss-mt](https://huggingface.co/spaces/ghanaopenai/gloss-mt)**
 
 Google Translate-style interface featuring real-time token streaming, live dictionary tool-calling against 478,822 entries, and dedicated linguistic reasoning inspection.
 

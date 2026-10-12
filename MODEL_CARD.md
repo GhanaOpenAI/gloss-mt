@@ -27,7 +27,7 @@ pipeline_tag: translation
 - **Author:** [Ghana Open AI](https://huggingface.co/ghanaopenai)
 - **Supported by:** [Ghana NLP](https://ghananlp.org)
 - **GitHub Repository:** [GhanaOpenAI/gloss-mt](https://github.com/GhanaOpenAI/gloss-mt)
-- **Interactive Live Demo:** [Hugging Face Spaces: twi-translator](https://huggingface.co/spaces/ghanaopenai/twi-translator)
+- **Interactive Live Demo:** [Hugging Face Spaces: GLOSS-MT](https://huggingface.co/spaces/ghanaopenai/gloss-mt)
 - **Base Model:** `google/gemma-4-E4B-it` (4B parameter compact multimodal/language foundation model)
 - **Bundled Dictionary:** 545,633 English→Twi verified offline entries
 
