@@ -129,6 +129,15 @@ def evaluate_checkpoint(
     bleu = sacrebleu.corpus_bleu(hyps, [refs])
     chrf = sacrebleu.corpus_chrf(hyps, [refs], beta=2)
 
+    # Compute CER
+    try:
+        import editdistance
+        total_dist = sum(editdistance.eval(r, h) for r, h in zip(refs, hyps))
+        total_ref_chars = sum(len(r) for r in refs)
+        cer = round(100.0 * total_dist / max(1, total_ref_chars), 2)
+    except ImportError:
+        cer = None
+
     # Length ratio (words)
     hyp_words = sum(len(h.split()) for h in hyps)
     ref_words = sum(len(r.split()) for r in refs)
@@ -137,6 +146,7 @@ def evaluate_checkpoint(
     return {
         "bleu": round(bleu.score, 2),
         "chrf2": round(chrf.score, 2),
+        "cer": cer,
         "length_ratio": round(lr, 3),
         "hyp_words": hyp_words,
         "ref_words": ref_words,
@@ -150,6 +160,7 @@ def main():
     ap.add_argument("--data", required=True, help="Path to validation.jsonl")
     ap.add_argument("--limit", type=int, default=100, help="Number of validation examples (default 100)")
     ap.add_argument("--batch-size", type=int, default=4, help="Inference batch size")
+    ap.add_argument("--max-new-tokens", type=int, default=256, help="Max new tokens to generate")
     ap.add_argument("--steps", nargs="*", type=int, default=None, help="Specific step numbers to evaluate (e.g. 900 1800)")
     ap.add_argument("--latest", action="store_true", help="Only evaluate the latest checkpoint")
     ap.add_argument("--out", default=None, help="Output JSON path (defaults to <checkpoints>/eval_metrics.json)")
@@ -213,7 +224,7 @@ def main():
         peft_model = PeftModel.from_pretrained(base_model, ckpt)
 
         metrics = evaluate_checkpoint(
-            peft_model, tok, examples, batch_size=args.batch_size
+            peft_model, tok, examples, batch_size=args.batch_size, max_new_tokens=args.max_new_tokens
         )
         metrics["step"] = step
         metrics["checkpoint"] = ckpt_name
@@ -221,7 +232,7 @@ def main():
         results.append(metrics)
 
         print(
-            f"Result: Step {step} | Loss: {eval_loss} | BLEU: {metrics['bleu']} | chrF2: {metrics['chrf2']} | Length Ratio: {metrics['length_ratio']}",
+            f"Result: Step {step} | Loss: {eval_loss} | chrF2: {metrics['chrf2']} | BLEU: {metrics['bleu']} | CER: {metrics.get('cer')} | Length Ratio: {metrics['length_ratio']}",
             flush=True,
         )
 
@@ -229,13 +240,14 @@ def main():
         peft_model.unload()
 
     # Print summary table
-    print("\n" + "=" * 75)
-    print(f"{'Checkpoint':<18} | {'Step':<6} | {'Loss':<8} | {'BLEU':<6} | {'chrF2':<6} | {'Length Ratio':<12}")
-    print("-" * 75)
+    print("\n" + "=" * 85, flush=True)
+    print(f"{'Checkpoint':<18} | {'Step':<6} | {'Loss':<8} | {'chrF2':<6} | {'BLEU':<6} | {'CER':<6} | {'Length Ratio':<12}", flush=True)
+    print("-" * 85, flush=True)
     for r in results:
         loss_str = str(r["eval_loss"]) if r["eval_loss"] is not None else "N/A"
-        print(f"{r['checkpoint']:<18} | {r['step']:<6} | {loss_str:<8} | {r['bleu']:<6} | {r['chrf2']:<6} | {r['length_ratio']:<12}")
-    print("=" * 75)
+        cer_str = str(r["cer"]) if r.get("cer") is not None else "N/A"
+        print(f"{r['checkpoint']:<18} | {r['step']:<6} | {loss_str:<8} | {r['chrf2']:<6} | {r['bleu']:<6} | {cer_str:<6} | {r['length_ratio']:<12}", flush=True)
+    print("=" * 85, flush=True)
 
     out_file = args.out or os.path.join(args.checkpoints, "eval_metrics.json")
     with open(out_file, "w", encoding="utf-8") as f:
