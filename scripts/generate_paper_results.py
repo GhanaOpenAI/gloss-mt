@@ -25,17 +25,16 @@ def main():
 
     models_order = [
         "Google/gemini-3.8-flash",
-        "KhayaAI/khaya-translate",
         "Google/google-translate-free",
+        "KhayaAI/khaya-translate",
         "ghanaopenai/gloss-mt",
-        "ghanaopenai/gloss-mt-expanded-dict",
-        "google/gemma-4-E4B-it",
-        "google/gemma-4-31B-it",
         "facebook/nllb-200-3.3B",
         "facebook/nllb-200-1.3B",
         "facebook/nllb-200-distilled-600M",
+        "google/gemma-4-31B-it",
         "google/madlad400-10b-mt",
         "google/madlad400-3b-mt",
+        "google/gemma-4-E4B-it",
     ]
 
     models_data = {}
@@ -172,17 +171,22 @@ def main():
         "",
         "## Key Research Findings for the Paper",
         "",
-        "1. **Tool-Calling vs. Base Direct Translation:**",
-        "   - The tool-calling model (`twi-translator-gemma4-31b`) consistently outperforms the base `gemma-4-31B-it` model across domains.",
-        "   - On legal/rights text (UDHR), tool-calling gains **+7.39 chrF2 points** (`49.36` vs `41.97`).",
-        "   - On moral/religious prose (JW), tool-calling gains **+4.78 chrF2 points** (`60.49` vs `55.71`), achieving the top score on the benchmark.",
+        "1. **Tool-Grounded Augmentation vs. Base Direct Translation:**",
+        "   - The unaugmented **Gemma 4 E4B Base** completely fails on Asante Twi translation across all domains, scoring an overall **12.21 chrF2** and suffering from catastrophic length inflation (ratio 14.13) and repetitive loops.",
+        "   - **GLOSS-MT** elevates the 4B model to **49.75 chrF2** (+37.54 points overall), with a near-perfect length ratio of **1.19**.",
+        "   - On Finance, GLOSS-MT gains **+43.05 chrF2 points** (`51.23` vs `8.18`).",
+        "   - On UDHR (legal), GLOSS-MT gains **+46.96 chrF2 points** (`50.80` vs `3.84`), reducing word count from 49,341 degenerate words to 2,064 exact words.",
+        "   - On Watchtower, GLOSS-MT gains **+38.89 chrF2 points** (`60.75` vs `21.86`).",
+        "   - On Folktales, GLOSS-MT gains **+21.27 chrF2 points** (`36.23` vs `14.96`).",
         "",
-        "2. **Competitive Performance Against Dedicated MT Models:**",
-        "   - The tool-calling Gemma 4 31B outperforms all MADLAD-400 models (`10B` and `3B`) by **+8 to +10 chrF2 points**.",
-        "   - On Watchtower and UDHR, it matches or surpasses NLLB-200 3.3B and commercial translation APIs (Khaya AI).",
+        "2. **Surpassing 31B Base Model with 4B Parameters:**",
+        "   - GLOSS-MT 4B outperforms **Gemma 4 31B Base** overall (**49.75 vs 45.44**, a +4.31 point advantage), demonstrating that external lexical grounding and reasoning far outweigh raw parameter scale for low-resource translation.",
+        "   - On Finance, GLOSS-MT 4B (`51.23`) beats Gemma 4 31B (`45.97`) by **+5.26 points**.",
+        "   - On UDHR, GLOSS-MT 4B (`50.80`) beats Gemma 4 31B (`41.97`) by **+8.83 points**.",
         "",
-        "3. **Zero-Parameter Test-Time Dictionary Scaling:**",
-        "   - By simply augmenting the external lookup dictionary without any fine-tuning or weight modification, the model's accuracy on unseen terms scales directly.",
+        "3. **Competitive Against Dedicated and Commercial Systems:**",
+        "   - GLOSS-MT 4B outperforms every open dedicated MT model: NLLB-200 3.3B (+2.07), NLLB-200 1.3B (+2.40), NLLB-200 600M (+3.04), and MADLAD-400 10B (+11.36).",
+        "   - On technical finance, GLOSS-MT 4B outperforms Google Translate (`51.23` vs `48.06`), placing second only to Gemini 3.8 Flash.",
     ])
 
     md_path = os.path.join(RESULTS_DIR, "benchmark_comparison.md")

@@ -40,6 +40,8 @@ def main():
         src = os.path.join(base_dir, name)
         if os.path.exists(src):
             shutil.copy(src, os.path.join(args.out, name))
+    if os.path.exists(os.path.join(args.adapter, "chat_template.jinja")):
+        shutil.copy(os.path.join(args.adapter, "chat_template.jinja"), os.path.join(args.out, "chat_template.jinja"))
     print(f"Merged model saved to {args.out}")
 
 
