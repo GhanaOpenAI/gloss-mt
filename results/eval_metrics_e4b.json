@@ -56,15 +56,15 @@
     "eval_loss": 0.5076
   },
   {
-    "bleu": 1.12,
-    "chrf2": 17.59,
-    "cer": 78.05,
-    "gemini_score": null,
-    "gemini_score_src": null,
-    "gemini_tier": null,
-    "length_ratio": 0.47,
-    "hyp_words": 6867,
-    "ref_words": 14620,
+    "bleu": 1.14,
+    "chrf2": 17.42,
+    "cer": 78.31,
+    "gemini_score": 79.34,
+    "gemini_score_src": 82.23,
+    "gemini_tier": "Good",
+    "length_ratio": 0.459,
+    "hyp_words": 4076,
+    "ref_words": 8876,
     "step": 3750,
     "checkpoint": "checkpoint-3750",
     "eval_loss": 0.4965
@@ -82,5 +82,19 @@
     "step": 4650,
     "checkpoint": "checkpoint-4650",
     "eval_loss": 0.5151
+  },
+  {
+    "bleu": 1.01,
+    "chrf2": 17.13,
+    "cer": 78.47,
+    "gemini_score": 76.91,
+    "gemini_score_src": 80.74,
+    "gemini_tier": "Good",
+    "length_ratio": 0.461,
+    "hyp_words": 4090,
+    "ref_words": 8876,
+    "step": 4800,
+    "checkpoint": "checkpoint-4800",
+    "eval_loss": 0.5643
   }
 ]
