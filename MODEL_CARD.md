@@ -49,6 +49,7 @@ Evaluated across the comprehensive document-level `nsanku-mt-benchmark` suite (*
 | **Gemma 4 31B Base** | Foundation LLM | 31B | **45.44** | 11.95 | 45.97 | 41.97 | 57.57 | 36.26 |
 | **MADLAD-400 10B** | Dedicated Open MT | 10B | **38.39** | 7.92 | 39.25 | 37.26 | 53.90 | 23.16 |
 | **MADLAD-400 3B** | Dedicated Open MT | 3B | **36.97** | 6.70 | 37.43 | 36.60 | 50.66 | 23.19 |
+| **Gemma 4 E4B Base** | Foundation LLM | 4B | **12.21** | 0.94 | 8.18 | 3.84 | 21.86 | 14.96 |
 
 ---
 
