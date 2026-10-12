@@ -23,10 +23,25 @@ When disaggregating the contemporary, high-stakes operational domains (Finance, 
 | **Citizens' Budget (Finance)** | 3 | 8.18 | 45.97 | **51.23** | **+43.05** | **+5.26** |
 | **UDHR (Human Rights / Legal)** | 1 | 3.84 | 41.97 | **50.80** | **+46.96** | **+8.83** |
 | **Watchtower (JW / Religious Prose)** | 5 | 21.86 | 57.57 | **60.75** | **+38.89** | **+3.18** |
-| **Akan Folk-Tales (Rattray, 1930)** | 75 | 14.96 | **36.26** | **36.23** | **+21.27** | -0.03 |
-| **Macro Average (All 84 Docs)** | **84** | **12.21** | **45.44** | **49.75** | **+37.54** | **+4.31** |
+| **Akan Folk-Tales (Rattray, 1930)** | 75 | 14.96 | **36.71** | **36.23** | **+21.27** | -0.48 |
+| **Macro Average (All 84 Docs)** | **84** | **12.21** | **45.55** | **49.75** | **+37.54** | **+4.20** |
 
-On contemporary standard texts, **GLOSS-MT consistently outperforms the base 4B model by over +40 chrF2 points, and outperforms the 31B base model by +4.31 chrF2 points overall**, surpassing dedicated translation baselines such as NLLB-200 3.3B (`47.68`) and MADLAD-400 10B (`38.39`).
+On contemporary standard texts, **GLOSS-MT consistently outperforms the base 4B model by over +40 chrF2 points, and outperforms the 31B base model by +4.20 chrF2 points overall**, surpassing dedicated translation baselines such as NLLB-200 3.3B (`47.74`) and MADLAD-400 3B (`37.14`).
+
+### 2.1 Complete Leaderboard Across Evaluated Systems
+
+| Model | Track | Parameters | **chrF2 (Avg)** | **BLEU** | Finance | UDHR | Watchtower | Folktales | Docs |
+|---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Gemini 3.8 Flash** | Commercial LLM | Cloud | **54.64** | 17.25 | 52.50 | 56.44 | 69.28 | 40.33 | 84 |
+| **Google Translate** | Commercial API | Cloud | **51.26** | 15.67 | 48.06 | 52.30 | 67.15 | 37.54 | 84 |
+| **Khaya AI** | Commercial API | Cloud | **49.91** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
+| **GLOSS-MT (Ours)** | **LLM + Offline Tool** | **4B** | **49.75** | **11.45** | **51.23** | **50.80** | **60.75** | **36.23** | 84 |
+| **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 | 84 |
+| **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 | 84 |
+| **NLLB-200 600M** | Distilled Open MT | 600M | **46.71** | 12.74 | 44.10 | 50.17 | 57.06 | 35.50 | 84 |
+| **Gemma 4 31B Base** | Foundation LLM | 31B | **45.55** | 11.93 | 45.97 | 41.97 | 57.57 | 36.71 | 84 |
+| **MADLAD-400 3B** | Dedicated Open MT | 3B | **37.14** | 6.71 | 37.43 | 36.60 | 50.66 | 23.87 | 84 |
+| **Gemma 4 E4B Base** | Foundation LLM | 4B | **12.21** | 0.94 | 8.18 | 3.84 | 21.86 | 14.96 | 84 |
 
 ---
 
@@ -57,7 +72,7 @@ Generating this full sequence for a 2,800-word block exhausted the API token bud
 ### 4.2 Chunking Solution and Validated Recovery
 By updating the benchmark chunking fallback to 400 characters (~60 words / 1–2 sentences) and setting `max_tokens = 4096`, all 75 folktale documents are now translated without truncation. 
 - Folktale 31 scored **`38.99 chrF2`** (versus truncated 22.15).
-- The 75-document folktales average rose to **`36.23 chrF2`**, directly matching the 31B base model (`36.26`) and outperforming NLLB-200 1.3B (`35.74`) and NLLB-200 600M (`35.51`).
+- The 75-document folktales average rose to **`36.23 chrF2`**, closely matching the 31B base model (`36.71`), matching Khaya AI (`36.22`), and outperforming NLLB-200 1.3B (`36.05`) and NLLB-200 600M (`35.50`).
 
 ### 4.3 Orthographic and Diachronic Divergence
 The Rattray (1930) corpus uses pre-standardization colonial Gold Coast orthography with archaic phonological transcriptions, dialectal Asante idioms, and non-standardized morpheme segmentations. 
