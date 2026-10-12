@@ -41,14 +41,13 @@ Evaluated across the comprehensive document-level `nsanku-mt-benchmark` suite (*
 
 | Model | Track / Architecture | Parameters | **chrF2 (Avg)** | **BLEU** | Finance (3 Docs) | UDHR (Legal) | Watchtower (5 Docs) | Folktales (75 Docs) |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Google Translate** | Commercial API | Cloud | **51.23** | 15.66 | 48.06 | 52.30 | 67.15 | 37.43 |
+| **Google Translate** | Commercial API | Cloud | **51.26** | 15.67 | 48.06 | 52.30 | 67.15 | 37.54 |
 | **GLOSS-MT (Ours)** | **LLM + Offline Tool** | **4B** | **49.75** | **11.45** | **51.23** | **50.80** | **60.75** | **36.23** |
-| **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.68** | 14.15 | 45.25 | 52.05 | 56.89 | 36.54 |
-| **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.35** | 13.67 | 45.72 | 50.47 | 57.46 | 35.74 |
-| **NLLB-200 600M** | Distilled Open MT | 600M | **46.71** | 12.75 | 44.10 | 50.17 | 57.06 | 35.51 |
-| **Gemma 4 31B Base** | Foundation LLM | 31B | **45.44** | 11.95 | 45.97 | 41.97 | 57.57 | 36.26 |
-| **MADLAD-400 10B** | Dedicated Open MT | 10B | **38.39** | 7.92 | 39.25 | 37.26 | 53.90 | 23.16 |
-| **MADLAD-400 3B** | Dedicated Open MT | 3B | **36.97** | 6.70 | 37.43 | 36.60 | 50.66 | 23.19 |
+| **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 |
+| **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 |
+| **NLLB-200 600M** | Distilled Open MT | 600M | **46.71** | 12.74 | 44.10 | 50.17 | 57.06 | 35.50 |
+| **Gemma 4 31B Base** | Foundation LLM | 31B | **45.55** | 11.93 | 45.97 | 41.97 | 57.57 | 36.71 |
+| **MADLAD-400 3B** | Dedicated Open MT | 3B | **37.14** | 6.71 | 37.43 | 36.60 | 50.66 | 23.87 |
 | **Gemma 4 E4B Base** | Foundation LLM | 4B | **12.21** | 0.94 | 8.18 | 3.84 | 21.86 | 14.96 |
 
 ---

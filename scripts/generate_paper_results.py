@@ -32,7 +32,6 @@ def main():
         "facebook/nllb-200-1.3B",
         "facebook/nllb-200-distilled-600M",
         "google/gemma-4-31B-it",
-        "google/madlad400-10b-mt",
         "google/madlad400-3b-mt",
         "google/gemma-4-E4B-it",
     ]
