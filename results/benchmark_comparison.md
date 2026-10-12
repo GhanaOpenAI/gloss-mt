@@ -16,7 +16,8 @@ Comprehensive document-level benchmark evaluation on the `nsanku-mt-benchmark` s
 | **MADLAD-400 10B** | open | **38.39** | 7.92 | 39.25 | 37.26 | 53.9 | 23.16 | 84 |
 | **MADLAD-400 3B** | open | **36.97** | 6.7 | 37.43 | 36.6 | 50.66 | 23.19 | 84 |
 | *Gemma 4 E4B Instruct (Base)* | llm | *queued* | - | - | - | - | - | 84 |
-| *GLOSS-MT (Gemma 4 E4B + Tool Calling)* | llm | *training* | - | - | - | - | - | 84 |
+| *GLOSS-MT (Gemma 4 E4B + Tool Calling)* | llm | *queued* | - | - | - | - | - | 84 |
+| *GLOSS-MT (Gemma 4 E4B + Expanded Dict)* | llm | *queued* | - | - | - | - | - | 84 |
 
 ## Domain & Dataset Breakdown
 
