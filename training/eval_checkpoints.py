@@ -138,6 +138,25 @@ def evaluate_checkpoint(
     except ImportError:
         cer = None
 
+    # Compute GeminiScore (semantic embedding similarity via gemini-score)
+    gemini_sem_ref = None
+    gemini_sem_src = None
+    gemini_tier = None
+    try:
+        import gemini_score
+        # 1. Target semantic similarity (Twi Hypothesis vs Twi Reference)
+        res_ref = gemini_score.score(hyps, refs)
+        gemini_sem_ref = round(res_ref.score, 2)
+        gemini_tier = res_ref.tier
+
+        # 2. Cross-lingual semantic similarity (Twi Hypothesis vs English Source)
+        srcs = [ex.get("english", "") for ex in examples]
+        if any(srcs):
+            res_src = gemini_score.score(hyps, srcs)
+            gemini_sem_src = round(res_src.score, 2)
+    except Exception as e:
+        print(f"  [Notice] GeminiScore skipped: {e}", flush=True)
+
     # Length ratio (words)
     hyp_words = sum(len(h.split()) for h in hyps)
     ref_words = sum(len(r.split()) for r in refs)
@@ -147,6 +166,9 @@ def evaluate_checkpoint(
         "bleu": round(bleu.score, 2),
         "chrf2": round(chrf.score, 2),
         "cer": cer,
+        "gemini_score": gemini_sem_ref,
+        "gemini_score_src": gemini_sem_src,
+        "gemini_tier": gemini_tier,
         "length_ratio": round(lr, 3),
         "hyp_words": hyp_words,
         "ref_words": ref_words,
@@ -232,7 +254,7 @@ def main():
         results.append(metrics)
 
         print(
-            f"Result: Step {step} | Loss: {eval_loss} | chrF2: {metrics['chrf2']} | BLEU: {metrics['bleu']} | CER: {metrics.get('cer')} | Length Ratio: {metrics['length_ratio']}",
+            f"Result: Step {step} | Loss: {eval_loss} | chrF2: {metrics['chrf2']} | BLEU: {metrics['bleu']} | GemScore (Ref): {metrics.get('gemini_score')}% ({metrics.get('gemini_tier')}) | GemScore (Src): {metrics.get('gemini_score_src')}% | CER: {metrics.get('cer')}% | LenRatio: {metrics['length_ratio']}",
             flush=True,
         )
 
@@ -240,14 +262,16 @@ def main():
         peft_model.unload()
 
     # Print summary table
-    print("\n" + "=" * 85, flush=True)
-    print(f"{'Checkpoint':<18} | {'Step':<6} | {'Loss':<8} | {'chrF2':<6} | {'BLEU':<6} | {'CER':<6} | {'Length Ratio':<12}", flush=True)
-    print("-" * 85, flush=True)
+    print("\n" + "=" * 105, flush=True)
+    print(f"{'Checkpoint':<18} | {'Step':<6} | {'Loss':<8} | {'chrF2':<6} | {'BLEU':<6} | {'GemScore':<9} | {'GemSrc':<8} | {'CER':<6} | {'LenRatio':<8}", flush=True)
+    print("-" * 105, flush=True)
     for r in results:
         loss_str = str(r["eval_loss"]) if r["eval_loss"] is not None else "N/A"
         cer_str = str(r["cer"]) if r.get("cer") is not None else "N/A"
-        print(f"{r['checkpoint']:<18} | {r['step']:<6} | {loss_str:<8} | {r['chrf2']:<6} | {r['bleu']:<6} | {cer_str:<6} | {r['length_ratio']:<12}", flush=True)
-    print("=" * 85, flush=True)
+        gem_str = f"{r['gemini_score']}%" if r.get("gemini_score") is not None else "N/A"
+        gemsrc_str = f"{r['gemini_score_src']}%" if r.get("gemini_score_src") is not None else "N/A"
+        print(f"{r['checkpoint']:<18} | {r['step']:<6} | {loss_str:<8} | {r['chrf2']:<6} | {r['bleu']:<6} | {gem_str:<9} | {gemsrc_str:<8} | {cer_str:<6} | {r['length_ratio']:<8}", flush=True)
+    print("=" * 105, flush=True)
 
     out_file = args.out or os.path.join(args.checkpoints, "eval_metrics.json")
     with open(out_file, "w", encoding="utf-8") as f:
