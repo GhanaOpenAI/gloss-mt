@@ -195,15 +195,11 @@ class OpenAIBackend:
 
     def chat(self, messages: List[Dict], tools: Optional[List[Dict]], temperature: float = 0.0):
         """Returns (answer, tool_calls, reasoning)."""
-        extra = {"chat_template_kwargs": TEMPLATE_KWARGS, "repetition_penalty": 1.15}
+        extra = {"chat_template_kwargs": TEMPLATE_KWARGS}
         kwargs = {"model": self.model, "messages": self._to_api(messages), "temperature": temperature,
                   "max_tokens": self.max_tokens,
+                  "stop": ["<|im_end|>", "<|endoftext|>"],
                   "extra_body": extra}
-        if tools:
-            kwargs["tools"] = tools
-            kwargs["frequency_penalty"] = 0.3
-        else:
-            kwargs["frequency_penalty"] = 0.1
         msg = self.client.chat.completions.create(**kwargs).choices[0].message
         calls = []
         for c in msg.tool_calls or []:

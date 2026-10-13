@@ -45,6 +45,8 @@ The model only writes text. `twi_translate.TwiTranslator` runs the loop:
 4. append the result as a `tool` message (same template as the training data),
 5. generate again to get the reasoning and translation.
 
+> **Important Input Scope Note:** GLOSS-MT is optimized for **long-form, paragraph-level, and document texts**. Translating single-word fragments or isolated greetings (e.g. standalone *"Welcome"*) without subject/predicate context can cause degraded or unnatural outputs. For best results, provide complete sentences or cohesive paragraph-level context.
+
 ## Quick start (deployment)
 
 ```bash

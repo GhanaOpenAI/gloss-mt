@@ -16,3 +16,6 @@ Google Translate-style interface for English-to-Twi translation powered by Gemma
 **Supported by:** [Ghana NLP](https://ghananlp.org)  
 **Model:** [`ghanaopenai/gloss-mt`](https://huggingface.co/ghanaopenai/gloss-mt)  
 **Code:** [`GhanaOpenAI/gloss-mt`](https://github.com/GhanaOpenAI/gloss-mt)
+
+### 💡 Best Practice & Input Scope
+GLOSS-MT is optimized for **long-form, paragraph-level, and document texts** (news articles, reports, educational prose, and narratives). Translating isolated single-word fragments or elliptical greetings (e.g., standalone *"Welcome"*) without full subject/predicate context may yield degraded results. For optimal translation quality, provide complete grammatical sentences or cohesive paragraphs.

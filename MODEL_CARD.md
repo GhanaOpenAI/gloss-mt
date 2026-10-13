@@ -86,6 +86,17 @@ Input English Text
 
 ---
 
+## Important Usage Note & Scope: Long-Form vs. Short Text
+
+GLOSS-MT was specifically trained on **long-form, paragraph-level, and document-length texts** (multi-sentence paragraphs, news articles, financial/macroeconomic reports, UDHR legal texts, and cultural narratives).
+
+### Practical Operational Guidance:
+- **Optimal Input**: Provide complete sentences, structured paragraphs, or full documents where the model can extract meaningful noun phrases for external dictionary retrieval, reason about syntactic concord in context, and generate fluent Asante Twi.
+- **Short Texts & Isolated Greetings**: Feeding isolated, single-word fragments or elliptical greetings (e.g., standalone *"Welcome"* or single-word inputs without subject/predicate) may yield degraded or formulaic results. Because the model is conditioned on rich document discourse, it may attempt to structure single words into formal discourse templates or fail to formulate meaningful dictionary queries.
+- **Recommendation**: For everyday or conversational translation, provide complete grammatical sentences (e.g., *"We welcome all visitors to Ghana"* rather than standalone *"Welcome"*).
+
+---
+
 ## Quick Start & Usage
 
 ### 1. In-Process Python (with `transformers`)
