@@ -6,7 +6,7 @@
 set -e
 
 BENCH_LOCAL="/home/owusus/Documents/GitHub/nsanku-mt-benchmark"
-REPO_LOCAL="/home/owusus/Documents/GitHub/translation-tool-calling-dataset"
+REPO_LOCAL="/home/owusus/Documents/GitHub/gloss-mt"
 
 echo "=== Monitoring Expanded Dictionary Benchmark on H200 ==="
 
