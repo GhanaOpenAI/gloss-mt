@@ -41,6 +41,9 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--out", default="checkpoints/translategemma-4b-twi")
     ap.add_argument("--dict", default=GLOSSARY_DICT, help="glossary dictionary (default: one translation per phrase)")
+    ap.add_argument("--train-glossary", choices=["gold", "dictionary"], default="gold",
+                    help="gold: pretranslate training chunks only with terms their reference uses; "
+                         "dictionary: plain lookups (validation always uses plain lookups)")
     ap.add_argument("--chunk-tokens", type=int, default=192)
     ap.add_argument("--max-len", type=int, default=2048)
     ap.add_argument("--epochs", type=float, default=3)
@@ -70,11 +73,13 @@ def main():
 
     tok = AutoTokenizer.from_pretrained(args.model)
     lookup = TwiLookup(args.dict)
+    multi = TwiLookup() if args.train_glossary == "gold" else None  # multi-candidate, for gold matching
     ds, gen_examples = {}, []
     for split in ("train", "validation"):
         with open(os.path.join(args.data, f"{split}.jsonl"), encoding="utf-8") as f:
             rows = [json.loads(line) for line in f if line.strip()]
-        ex = build_examples(rows, tok, lookup, args.chunk_tokens, prefix="")
+        ex = build_examples(rows, tok, lookup, args.chunk_tokens, prefix="",
+                            gold=split == "train" and args.train_glossary == "gold", multi=multi)
         enc = [tokenize(tok, e["chunk"], e["results"], e["tgt"], args.max_len) for e in ex]
         kept = [e for e in enc if e]
         ds[split] = Dataset.from_list(kept)

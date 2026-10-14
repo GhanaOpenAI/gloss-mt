@@ -27,7 +27,7 @@ import json
 import os
 import shutil
 import sys
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from twi_translate import TwiLookup  # noqa: E402
@@ -37,13 +37,18 @@ from twi_translate.seq2seq import (  # noqa: E402
 
 LORA_TARGETS = r".*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2|q|k|v|o|wi_0|wi_1|wo)$"  # NLLB and umT5
 
+from gold_glossary import gold_glossary, reasoning_pairs  # noqa: E402
 from gen_eval import batched_generate, sample_examples, with_gen_metrics  # noqa: E402
 
 
 def build_examples(rows: List[Dict], tok, lookup: TwiLookup, chunk_tokens: int,
-                   prefix: str = TRANSLATE_PREFIX) -> List[Dict]:
+                   prefix: str = TRANSLATE_PREFIX, gold: bool = False,
+                   multi: Optional[TwiLookup] = None) -> List[Dict]:
+    """One example per chunk. gold=True pretranslates only terms the gold Twi chunk uses
+    (training/gold_glossary.py); otherwise plain dictionary lookups, as at inference."""
     out = []
     for r in rows:
+        pairs = reasoning_pairs(r.get("reasoning", "")) if gold else []
         en_lines, en_seps = split_lines(r["english"])
         tw_lines, tw_seps = split_lines(r["translation"])
         if len(en_lines) != len(tw_lines):
@@ -51,7 +56,7 @@ def build_examples(rows: List[Dict], tok, lookup: TwiLookup, chunk_tokens: int,
         lengths = [len(tok(line, add_special_tokens=False).input_ids) for line in en_lines]
         for s, e in pack_lines(lengths, chunk_tokens):
             en, tw = join_span(en_lines, en_seps, s, e), join_span(tw_lines, tw_seps, s, e)
-            results = glossary_for(en, lookup)
+            results = gold_glossary(en, tw, pairs, lookup, multi) if gold else glossary_for(en, lookup)
             out.append({"src": translate_input(en, results, prefix), "tgt": tw, "chunk": en, "results": results})
     return out
 
@@ -81,6 +86,9 @@ def main():
     ap.add_argument("--data", default="data")
     ap.add_argument("--out", default="checkpoints/umt5-xl-twi")
     ap.add_argument("--dict", default=GLOSSARY_DICT, help="glossary dictionary (default: one translation per phrase)")
+    ap.add_argument("--train-glossary", choices=["gold", "dictionary"], default="gold",
+                    help="gold: pretranslate training chunks only with terms their reference uses; "
+                         "dictionary: plain lookups (validation always uses plain lookups)")
     ap.add_argument("--chunk-tokens", type=int, default=192)
     ap.add_argument("--max-src", type=int, default=1024)
     ap.add_argument("--max-tgt", type=int, default=1024)
@@ -115,12 +123,14 @@ def main():
         tok.src_lang, tok.tgt_lang = langs
     prefix = "" if langs else TRANSLATE_PREFIX
     lookup = TwiLookup(args.dict)
+    multi = TwiLookup() if args.train_glossary == "gold" else None  # multi-candidate, for gold matching
 
     ds, gen_examples = {}, []
     for split in ("train", "validation"):
         with open(os.path.join(args.data, f"{split}.jsonl"), encoding="utf-8") as f:
             rows = [json.loads(line) for line in f if line.strip()]
-        ex = build_examples(rows, tok, lookup, args.chunk_tokens, prefix)
+        ex = build_examples(rows, tok, lookup, args.chunk_tokens, prefix,
+                            gold=split == "train" and args.train_glossary == "gold", multi=multi)
         enc = tok([e["src"] for e in ex], text_target=[e["tgt"] for e in ex])
         keep = [i for i in range(len(ex))
                 if len(enc["input_ids"][i]) <= args.max_src and len(enc["labels"][i]) <= args.max_tgt]
