@@ -36,6 +36,8 @@ GLOSSARY_STYLE = "inline"  # "inline": phrases pretranslated in place; "append":
 _SPLIT = re.compile(r"(\n\s*)")
 _NL_SPACES = re.compile(r" *\n *")
 _MARKUP = re.compile(r"[|#*`<>\[\]{}=~]|---")
+_LEADERS = re.compile(r"(\s*(?:\.\s?){4,}\s*)")  # dot leaders of a table of contents
+_PAGE_REF = re.compile(r"\s*[ivxlcdm\d][ivxlcdm\d\s.,–-]*", re.IGNORECASE)
 
 
 def prepare_tokenizer(tok) -> int:
@@ -163,6 +165,17 @@ def clean_output(text: str) -> str:
     return _NL_SPACES.sub("\n", text).strip()
 
 
+def protect_leaders(text: str) -> List[Tuple[str, bool]]:
+    """Split text around dot leaders (4+ dots, with their surrounding spaces) into
+    (segment, translate?) pairs; leaders and segments with no words to translate (page numbers,
+    roman numerals) are kept as they are."""
+    parts = _LEADERS.split(text)
+    if len(parts) == 1:
+        return [(text, bool(re.search(r"[^\W\d_]", text)))]
+    return [(seg, i % 2 == 0 and bool(re.search(r"[^\W\d_]", seg)) and not (i and _PAGE_REF.fullmatch(seg)))
+            for i, seg in enumerate(parts) if seg]
+
+
 def chunk_text(text: str, tok, max_tokens: int) -> Tuple[List[str], List[str]]:
     """Chunk a document; returns the chunks and the separator that follows each one."""
     lines, seps = split_lines(text)
@@ -187,6 +200,22 @@ class ChunkedTranslator:
         raise NotImplementedError
 
     def translate_many(self, texts: List[str]) -> List[Dict]:
+        """Translate texts; dot leaders ("Contents ........ 23") are kept out of the model, which
+        loops on them: only the text around them is translated (protect_leaders)."""
+        parts = [protect_leaders(t) for t in texts]
+        segs = list(dict.fromkeys(s for p in parts for s, translate in p if translate))
+        done = dict(zip(segs, self._translate_texts(segs)))
+        out = []
+        for p in parts:
+            hits = [done[s] for s, translate in p if translate]
+            out.append({
+                "translation": "".join(done[s]["translation"] if translate else s for s, translate in p).strip(),
+                "phrases": [x for h in hits for x in h["phrases"]],
+                "lookup_results": [x for h in hits for x in h["lookup_results"]],
+            })
+        return out
+
+    def _translate_texts(self, texts: List[str]) -> List[Dict]:
         docs = [chunk_text(t, self.tok, self.chunk_tokens) for t in texts]
         flat = [c for chunks, _ in docs for c in chunks]
         results = [glossary_for(c, self.lookup) if self.glossary else [] for c in flat]
