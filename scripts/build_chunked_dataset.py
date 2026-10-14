@@ -92,10 +92,11 @@ splits and gold Twi references, without the tool-call trajectories and reasoning
    capitalised matches keep that casing). Phrases not in the dictionary, or not written
    verbatim in the chunk, stay English. The model learns to translate the rest around them.
    This is what a model sees at inference.
-5. `english_pretranslated_gold` uses the same noun phrases, but each phrase's Twi is what the
-   **gold Twi chunk actually uses**: an `'English' -> 'Twi'` pair quoted in the source
-   example's reasoning trace (written with the reference in view), else a dictionary
-   candidate found in the gold chunk; other phrases stay English (`gold_terms`). Plain
+5. `english_pretranslated_gold` pretranslates the noun phrases the source example looked up
+   (its `tool_phrases`) that occur in the chunk, each with the Twi the **gold Twi chunk
+   actually uses**: the `'English' -> 'Twi'` pair quoted for it in the source example's
+   reasoning trace (written with the reference in view), else a dictionary candidate found in
+   the gold chunk; other phrases stay English (`gold_terms`). Plain
    dictionary terms appear in the reference only ~31% of the time, so training on
    `english_pretranslated` teaches a model to overrule inserted terms; training on
    `english_pretranslated_gold` teaches it to keep them. Since it is built from the
@@ -161,7 +162,7 @@ def build_split(rows, tok, lookup, chunk_tokens, multi):
             en = join_span(en_lines, en_seps, s, e)
             tw = join_span(tw_lines, tw_seps, s, e)
             gloss = glossary_for(en, lookup)
-            gold = gold_glossary(en, tw, pairs, lookup, multi)
+            gold = gold_glossary(en, tw, r.get("tool_phrases") or [], pairs, lookup, multi)
             out.append({
                 "id": r["id"], "chunk_index": i, "num_chunks": len(spans),
                 "english": en, "english_pretranslated": pretranslate(en, gloss),
