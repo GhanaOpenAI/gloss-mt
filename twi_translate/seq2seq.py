@@ -9,10 +9,9 @@ decoder-only runtime becomes a fixed pipeline in code, and the model only transl
   3. look them up in the offline dictionary (TwiLookup, same as the LLM tool)
   4. replace every dictionary phrase in the chunk with its Twi translation, in place
      (pretranslate), and translate the mixed chunk: "translate English to Twi: <chunk>" -> Twi chunk.
-     (style="append" instead keeps the chunk as is and appends "\\nglossary: a -> b; ...".)
   5. join the Twi chunks with the English separators
 
-Training builds the glossary the same way (glossary_for), so it matches inference.
+Training data (scripts/build_chunked_dataset.py) uses the same chunking and phrase lookup (glossary_for).
 The same pipeline (ChunkedTranslator) drives NLLB here and TranslateGemma in translategemma.py.
 
 The SentencePiece normaliser collapses newlines into spaces, so "\\n" is registered as an
@@ -30,8 +29,6 @@ from .lookup import DEFAULT_PATH, TwiLookup
 # twi_dictionary.tsv.gz stays the default of the Gemma tool-calling runtime.
 GLOSSARY_DICT = os.path.join(os.path.dirname(DEFAULT_PATH), "twi_dictionary_single.tsv.gz")
 TRANSLATE_PREFIX = "translate English to Twi: "
-GLOSSARY_PREFIX = "\nglossary: "
-GLOSSARY_STYLE = "inline"  # "inline": phrases pretranslated in place; "append": glossary line after the chunk
 
 _SPLIT = re.compile(r"(\n\s*)")
 _NL_SPACES = re.compile(r" *\n *")
@@ -96,11 +93,6 @@ def join_span(lines: List[str], seps: List[str], start: int, end: int) -> str:
 
 
 
-def format_glossary(results: List[Dict]) -> str:
-    """"a -> b | c; d -> e" for every phrase (not-found phrases map to their own English)."""
-    return "; ".join(f"{r['phrase']} -> {' | '.join(r['translations'])}" for r in results if r["translations"])
-
-
 def pretranslate(chunk: str, results: List[Dict]) -> str:
     """Replace every occurrence of each found dictionary phrase in the chunk with its Twi
     translation (case-insensitive, whole words, longest phrase first, one pass so a translation
@@ -122,14 +114,10 @@ def pretranslate(chunk: str, results: List[Dict]) -> str:
     return pattern.sub(sub, chunk)
 
 
-def translate_input(chunk: str, results: Optional[List[Dict]], prefix: str = TRANSLATE_PREFIX,
-                    style: str = GLOSSARY_STYLE) -> str:
-    """Model input: [prefix]chunk with the dictionary phrases pretranslated in place (style="inline")
-    or followed by "\\nglossary: ..." (style="append"); results=None leaves the chunk as is."""
-    if style == "inline":
-        return prefix + (pretranslate(chunk, results) if results else chunk)
-    glossary = format_glossary(results) if results else ""
-    return prefix + chunk + (GLOSSARY_PREFIX + glossary if glossary else "")
+def translate_input(chunk: str, results: Optional[List[Dict]], prefix: str = TRANSLATE_PREFIX) -> str:
+    """Model input: [prefix]chunk with its dictionary phrases pretranslated in place;
+    results=None leaves the chunk as is."""
+    return prefix + (pretranslate(chunk, results) if results else chunk)
 
 
 def source_casing(phrase: str, chunk: str) -> str:

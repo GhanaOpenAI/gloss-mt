@@ -1,24 +1,21 @@
-"""Full or LoRA fine-tune of umT5 or NLLB on the Twi dataset as chunked, glossary-conditioned translation.
+"""Fine-tune umT5 or NLLB (full or LoRA) on the chunked English-Twi dataset
+ghanaopenai/twi-translation-glossary-chunks (built by scripts/build_chunked_dataset.py).
 
-Each document is split into its (English/Twi line-aligned) lines, consecutive lines are packed
-into chunks of at most --chunk-tokens English tokens, and every chunk yields one example:
-  "translate English to Twi: <chunk with its dictionary phrases pretranslated in place>" -> Twi chunk
-The phrases come from spaCy noun phrases + TwiLookup (glossary_for) and are substituted by
-translate_input, exactly as twi_translate.seq2seq does at inference. NLLB (detected from its tokenizer) gets
-eng_Latn -> twi_Latn language codes instead of the "translate English to Twi: " prefix.
-Documents whose line counts differ between English and Twi are skipped (5 of 15k).
+Every chunk is one example -> its gold Twi chunk. Training inputs are english_pretranslated_gold:
+the chunk's dictionary phrases replaced in place by the Twi its gold chunk actually uses, so the
+model learns to keep pretranslated terms and translate the remaining English. Validation inputs
+are english_pretranslated: plain dictionary terms, exactly what twi_translate.seq2seq gives the
+model at inference. umT5 gets a "translate English to Twi: " prefix; NLLB (detected from its
+tokenizer) gets eng_Latn -> twi_Latn language codes instead.
 
 Full fine-tune: bf16 autocast over fp32 weights, Adafactor. --lora-r N instead trains LoRA
 adapters (bf16 base, AdamW) on every attention/FFN projection plus the embedding row of the added
 "\\n" token; checkpoints hold the adapter and final/ the merged model.
 
-Usage (H200):
-  python training/train_seq2seq.py --model google/umt5-xl --data data \\
-      --out checkpoints/umt5-xl-twi
-  python training/train_seq2seq.py --model facebook/nllb-200-3.3B --data data \\
-      --out checkpoints/nllb-3.3b-twi --lr 1e-4
-  python training/train_seq2seq.py --model facebook/nllb-200-3.3B --data data \\
+Usage (H200; --data is the HF dataset or a local save_to_disk copy of it):
+  python training/train_seq2seq.py --model facebook/nllb-200-3.3B \\
       --out checkpoints/nllb-3.3b-twi-lora --lora-r 32 --lr 2e-4
+  python training/train_seq2seq.py --model google/umt5-xl --out checkpoints/umt5-xl-twi
   python training/train_seq2seq.py ... --max-steps 20   # memory/throughput pilot
 """
 
@@ -27,38 +24,26 @@ import json
 import os
 import shutil
 import sys
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from twi_translate import TwiLookup  # noqa: E402
 from twi_translate.seq2seq import (  # noqa: E402
-    GLOSSARY_DICT, TRANSLATE_PREFIX, clean_output, glossary_for, join_span, load_seq2seq, nllb_langs, pack_lines,
-    prepare_tokenizer, split_lines, translate_input)
+    TRANSLATE_PREFIX, clean_output, load_seq2seq, nllb_langs, prepare_tokenizer)
 
-LORA_TARGETS = r".*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2|q|k|v|o|wi_0|wi_1|wo)$"  # NLLB and umT5
-
-from gold_glossary import gold_glossary, reasoning_pairs  # noqa: E402
 from gen_eval import batched_generate, sample_examples, with_gen_metrics  # noqa: E402
 
+DATASET = "ghanaopenai/twi-translation-glossary-chunks"
+LORA_TARGETS = r".*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2|q|k|v|o|wi_0|wi_1|wo)$"  # NLLB and umT5
 
-def build_examples(rows: List[Dict], tok, lookup: TwiLookup, chunk_tokens: int,
-                   prefix: str = TRANSLATE_PREFIX, gold: bool = False,
-                   multi: Optional[TwiLookup] = None) -> List[Dict]:
-    """One example per chunk. gold=True pretranslates only terms the gold Twi chunk uses
-    (training/gold_glossary.py); otherwise plain dictionary lookups, as at inference."""
-    out = []
-    for r in rows:
-        pairs = reasoning_pairs(r.get("reasoning", "")) if gold else []
-        en_lines, en_seps = split_lines(r["english"])
-        tw_lines, tw_seps = split_lines(r["translation"])
-        if len(en_lines) != len(tw_lines):
-            continue
-        lengths = [len(tok(line, add_special_tokens=False).input_ids) for line in en_lines]
-        for s, e in pack_lines(lengths, chunk_tokens):
-            en, tw = join_span(en_lines, en_seps, s, e), join_span(tw_lines, tw_seps, s, e)
-            results = gold_glossary(en, tw, pairs, lookup, multi) if gold else glossary_for(en, lookup)
-            out.append({"src": translate_input(en, results, prefix), "tgt": tw, "chunk": en, "results": results})
-    return out
+
+def load_chunks(data: str, split: str) -> List[Dict]:
+    """The split's chunks as {"input", "tgt", "chunk"}: training reads english_pretranslated_gold,
+    validation/test english_pretranslated (the inference input)."""
+    from datasets import load_dataset, load_from_disk
+
+    rows = load_from_disk(data)[split] if os.path.isdir(data) else load_dataset(data, split=split)
+    field = "english_pretranslated_gold" if split == "train" else "english_pretranslated"
+    return [{"input": r[field], "tgt": r["twi"], "chunk": r["english"]} for r in rows]
 
 
 def disk_guard(path: str, min_free_gb: float):
@@ -83,13 +68,8 @@ def disk_guard(path: str, min_free_gb: float):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="google/umt5-xl")
-    ap.add_argument("--data", default="data")
+    ap.add_argument("--data", default=DATASET, help="HF dataset id or local save_to_disk directory")
     ap.add_argument("--out", default="checkpoints/umt5-xl-twi")
-    ap.add_argument("--dict", default=GLOSSARY_DICT, help="glossary dictionary (default: one translation per phrase)")
-    ap.add_argument("--train-glossary", choices=["gold", "dictionary"], default="gold",
-                    help="gold: pretranslate training chunks only with terms their reference uses; "
-                         "dictionary: plain lookups (validation always uses plain lookups)")
-    ap.add_argument("--chunk-tokens", type=int, default=192)
     ap.add_argument("--max-src", type=int, default=1024)
     ap.add_argument("--max-tgt", type=int, default=1024)
     ap.add_argument("--epochs", type=float, default=5)
@@ -122,21 +102,18 @@ def main():
     if langs:
         tok.src_lang, tok.tgt_lang = langs
     prefix = "" if langs else TRANSLATE_PREFIX
-    lookup = TwiLookup(args.dict)
-    multi = TwiLookup() if args.train_glossary == "gold" else None  # multi-candidate, for gold matching
 
     ds, gen_examples = {}, []
     for split in ("train", "validation"):
-        with open(os.path.join(args.data, f"{split}.jsonl"), encoding="utf-8") as f:
-            rows = [json.loads(line) for line in f if line.strip()]
-        ex = build_examples(rows, tok, lookup, args.chunk_tokens, prefix,
-                            gold=split == "train" and args.train_glossary == "gold", multi=multi)
+        ex = load_chunks(args.data, split)
+        for e in ex:
+            e["src"] = prefix + e["input"]
         enc = tok([e["src"] for e in ex], text_target=[e["tgt"] for e in ex])
         keep = [i for i in range(len(ex))
                 if len(enc["input_ids"][i]) <= args.max_src and len(enc["labels"][i]) <= args.max_tgt]
         ds[split] = Dataset.from_dict({k: [enc[k][i] for i in keep]
                                        for k in ("input_ids", "attention_mask", "labels")})
-        print(f"{split}: {len(rows)} docs -> {len(ex)} examples, {len(ex) - len(keep)} over length dropped",
+        print(f"{split}: {len(ex)} chunks, {len(ex) - len(keep)} over length dropped",
               flush=True)
         if split == "validation":
             gen_examples = sample_examples(ex, args.gen_eval_chunks) if args.gen_eval_chunks > 0 else []

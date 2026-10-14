@@ -1,11 +1,11 @@
-"""LoRA fine-tune of TranslateGemma on chunked, glossary-conditioned Twi translation.
+"""LoRA fine-tune of TranslateGemma on the chunked English-Twi dataset
+ghanaopenai/twi-translation-glossary-chunks, with the same inputs as train_seq2seq.py
+(load_chunks: english_pretranslated_gold for training, english_pretranslated for validation),
+rendered with TranslateGemma's own prompt (twi_translate.translategemma.render_prompt); the
+loss covers only the Twi chunk and the closing <end_of_turn>. Single GPU, bf16 + TF32.
 
-Same chunks and glossaries as train_seq2seq.py (build_examples), rendered with
-TranslateGemma's own prompt (twi_translate.translategemma.render_prompt); the loss covers
-only the Twi chunk and the closing <end_of_turn>. Single GPU, bf16 + TF32.
-
-Usage (H200):
-  python training/train_translategemma.py --model google/translategemma-4b-it --data data \\
+Usage (H200; --data is the HF dataset or a local save_to_disk copy of it):
+  python training/train_translategemma.py --model google/translategemma-4b-it \\
       --out checkpoints/translategemma-4b-twi
   python training/train_translategemma.py ... --max-steps 30   # memory/throughput pilot
 """
@@ -18,17 +18,16 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_eval import batched_generate, sample_examples, with_gen_metrics  # noqa: E402
-from train_seq2seq import build_examples, disk_guard  # noqa: E402
-from twi_translate import TwiLookup  # noqa: E402
-from twi_translate.seq2seq import GLOSSARY_DICT  # noqa: E402
+from train_seq2seq import DATASET, disk_guard, load_chunks  # noqa: E402
 from twi_translate.translategemma import END_OF_TURN, load_translategemma, render_prompt  # noqa: E402
 
 IGNORE = -100
 LORA_TARGETS = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$"
 
 
-def tokenize(tok, chunk: str, results, tgt: str, max_len: int):
-    prompt = tok(render_prompt(tok, chunk, results), add_special_tokens=False).input_ids
+def tokenize(tok, text: str, tgt: str, max_len: int):
+    """text is the (pretranslated) source chunk, given to the prompt as is."""
+    prompt = tok(render_prompt(tok, text, None), add_special_tokens=False).input_ids
     answer = tok(tgt + END_OF_TURN + "\n", add_special_tokens=False).input_ids
     ids = prompt + answer
     if len(ids) > max_len:
@@ -38,13 +37,8 @@ def tokenize(tok, chunk: str, results, tgt: str, max_len: int):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="google/translategemma-4b-it")
-    ap.add_argument("--data", default="data")
+    ap.add_argument("--data", default=DATASET, help="HF dataset id or local save_to_disk directory")
     ap.add_argument("--out", default="checkpoints/translategemma-4b-twi")
-    ap.add_argument("--dict", default=GLOSSARY_DICT, help="glossary dictionary (default: one translation per phrase)")
-    ap.add_argument("--train-glossary", choices=["gold", "dictionary"], default="gold",
-                    help="gold: pretranslate training chunks only with terms their reference uses; "
-                         "dictionary: plain lookups (validation always uses plain lookups)")
-    ap.add_argument("--chunk-tokens", type=int, default=192)
     ap.add_argument("--max-len", type=int, default=2048)
     ap.add_argument("--epochs", type=float, default=3)
     ap.add_argument("--max-steps", type=int, default=-1)
@@ -72,18 +66,13 @@ def main():
     torch.backends.cudnn.allow_tf32 = True
 
     tok = AutoTokenizer.from_pretrained(args.model)
-    lookup = TwiLookup(args.dict)
-    multi = TwiLookup() if args.train_glossary == "gold" else None  # multi-candidate, for gold matching
     ds, gen_examples = {}, []
     for split in ("train", "validation"):
-        with open(os.path.join(args.data, f"{split}.jsonl"), encoding="utf-8") as f:
-            rows = [json.loads(line) for line in f if line.strip()]
-        ex = build_examples(rows, tok, lookup, args.chunk_tokens, prefix="",
-                            gold=split == "train" and args.train_glossary == "gold", multi=multi)
-        enc = [tokenize(tok, e["chunk"], e["results"], e["tgt"], args.max_len) for e in ex]
+        ex = load_chunks(args.data, split)
+        enc = [tokenize(tok, e["input"], e["tgt"], args.max_len) for e in ex]
         kept = [e for e in enc if e]
         ds[split] = Dataset.from_list(kept)
-        print(f"{split}: {len(rows)} docs -> {len(ex)} examples, {len(ex) - len(kept)} over length dropped",
+        print(f"{split}: {len(ex)} chunks, {len(ex) - len(kept)} over length dropped",
               flush=True)
         if split == "validation" and args.gen_eval_chunks > 0:
             gen_examples = sample_examples(ex, args.gen_eval_chunks)
@@ -127,7 +116,7 @@ def main():
     eos = [tok.eos_token_id, tok.convert_tokens_to_ids(END_OF_TURN)]
 
     def gen_fn(m, examples):
-        prompts = [render_prompt(tok, e["chunk"], e["results"]) for e in examples]
+        prompts = [render_prompt(tok, e["input"], None) for e in examples]
         outs = batched_generate(m, tok, prompts, args.batch_size * 4, 1024, decoder_only=True,
                                 eos_token_id=eos, pad_token_id=tok.pad_token_id)
         return [o.strip() for o in outs]

@@ -16,9 +16,7 @@ cd "$PROJ/repo"
 
 $VENV/bin/python training/train_translategemma.py \
     --model "$MODEL" \
-    --data data \
     --out "$OUT" \
-    --chunk-tokens 192 \
     --epochs 30 \
     --early-stopping-patience 5 \
     --batch-size 4 \

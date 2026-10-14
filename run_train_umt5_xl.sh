@@ -14,9 +14,7 @@ cd "$PROJ/repo"
 
 $VENV/bin/python training/train_seq2seq.py \
     --model "$MODEL" \
-    --data data \
     --out "$OUT" \
-    --chunk-tokens 192 \
     --max-src 1024 \
     --epochs 5 \
     --early-stopping-patience 3 \
