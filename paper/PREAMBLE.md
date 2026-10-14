@@ -30,3 +30,6 @@ Our architecture enables **zero-shot, zero-parameter test-time domain adaptation
 - The model immediately incorporates the newly supplied vocabulary into its reasoning and translation output without requiring a single gradient step or parameter update.
 
 We empirically validate this capability by demonstrating that augmenting the lookup dictionary with target-domain terminology yields immediate, measurable improvements across benchmark evaluations (Citizens' Budget, Universal Declaration of Human Rights, Watchtower prose, and traditional Akan Folk-Tales).
+
+### 1.5 Extending Dictionary Grounding Beyond Tool-Calling LLMs
+Tool calling requires an instruction-tuned LLM. Dedicated translation models, which remain strong and cheap for low-resource languages, take only source text. We therefore also study a **tool-free** variant of GLOSS-MT: the same dictionary is applied before translation by replacing the source's dictionary phrases with their target-language translations in place, and a translation model (NLLB-200 3.3B, and TranslateGemma) is fine-tuned to translate these partially pretranslated inputs. This keeps the community-contributed lexicon at the centre of the system while reducing inference to a single encoder-decoder pass (Section 5 of the benchmark analysis).

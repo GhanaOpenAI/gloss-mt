@@ -28,6 +28,7 @@ def main():
         "Google/google-translate-free",
         "KhayaAI/khaya-translate",
         "ghanaopenai/gloss-mt",
+        "ghanaopenai/gloss-mt-nllb-3.3b",
         "facebook/nllb-200-3.3B",
         "facebook/nllb-200-1.3B",
         "facebook/nllb-200-distilled-600M",
@@ -186,6 +187,12 @@ def main():
         "3. **Competitive Against Dedicated and Commercial Systems:**",
         "   - GLOSS-MT 4B outperforms every open dedicated MT model: NLLB-200 3.3B (+2.07), NLLB-200 1.3B (+2.40), NLLB-200 600M (+3.04), and MADLAD-400 10B (+11.36).",
         "   - On technical finance, GLOSS-MT 4B outperforms Google Translate (`51.23` vs `48.06`), placing second only to Gemini 3.8 Flash.",
+        "",
+        "4. **Tool-Free GLOSS-MT: Dictionary Terms Pretranslated In Place for a Dedicated MT Model:**",
+        "   - **GLOSS-MT (NLLB-200 3.3B + Glossary)** looks up each chunk's noun phrases in the same dictionary, replaces the found phrases by their Twi translations inside the English, and translates the mixed text with NLLB-200 3.3B fine-tuned (LoRA) on such inputs. It scores **49.78 chrF2 / 13.93 BLEU** with a length ratio of **0.99**.",
+        "   - **+2.04 chrF2** over the base NLLB-200 3.3B (`49.78` vs `47.74`), and level with the tool-calling GLOSS-MT Gemma 4 E4B (`49.75`) with **+2.48 BLEU** (`13.93` vs `11.45`), from one beam-search pass per chunk with no reasoning trace or tool loop.",
+        "   - Largest gain on Watchtower: **`65.55`** vs `56.89` for base NLLB-200 3.3B (+8.66) and `60.75` for GLOSS-MT Gemma 4 E4B (+4.80).",
+        "   - Finance `46.97` (+1.72 over base NLLB-200 3.3B, −4.26 below GLOSS-MT Gemma 4 E4B); UDHR `50.46` (−1.59 vs base NLLB-200 3.3B); Folktales `36.16` (−0.60).",
     ])
 
     md_path = os.path.join(RESULTS_DIR, "benchmark_comparison.md")
