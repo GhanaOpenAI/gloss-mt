@@ -11,7 +11,7 @@ zero-shot TranslateGemma baseline.
 from typing import Dict, List, Optional
 
 from .lookup import TwiLookup
-from .seq2seq import ChunkedTranslator, translate_input
+from .seq2seq import ChunkedTranslator, clean_output, translate_input
 
 SOURCE_LANG, TARGET_LANG = "en", "ak"
 END_OF_TURN = "<end_of_turn>"
@@ -69,5 +69,5 @@ class TranslateGemmaTranslator(ChunkedTranslator):
                                           eos_token_id=self.eos, pad_token_id=self.tok.pad_token_id)
             texts = self.tok.batch_decode(gen[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)
             for i, t in zip(idx, texts):
-                out[i] = t.strip()
+                out[i] = clean_output(t)
         return out

@@ -7,8 +7,9 @@ decoder-only runtime becomes a fixed pipeline in code, and the model only transl
      `chunk_tokens` source tokens (umT5 degrades well past its 1024-token pretraining length)
   2. extract each chunk's noun phrases with spaCy (twi_translate.extractor, nkrane-style)
   3. look them up in the offline dictionary (TwiLookup, same as the LLM tool)
-  4. replace every dictionary phrase in the chunk with its Twi translation, in place
-     (pretranslate), and translate the mixed chunk: "translate English to Twi: <chunk>" -> Twi chunk.
+  4. replace every dictionary phrase in the chunk with its Twi translation in angle brackets,
+     in place (pretranslate: "the <ɔman> has no <tumi>"), and translate the mixed chunk; the
+     brackets mark what was inserted, and the model writes the terms without them
   5. join the Twi chunks with the English separators
 
 Training data (scripts/build_chunked_dataset.py) uses the same chunking and phrase lookup (glossary_for).
@@ -32,6 +33,7 @@ TRANSLATE_PREFIX = "translate English to Twi: "
 
 _SPLIT = re.compile(r"(\n\s*)")
 _NL_SPACES = re.compile(r" *\n *")
+_INSERTED = re.compile(r"<([^<>\n]{1,120})>")  # a pretranslated term, as pretranslate writes it
 _MARKUP = re.compile(r"[|#*`<>\[\]{}=~]|---")
 _LEADERS = re.compile(r"(\s*(?:\.\s?){4,}\s*)")  # dot leaders of a table of contents
 _PAGE_REF = re.compile(r"\s*[ivxlcdm\d][ivxlcdm\d\s.,–-]*", re.IGNORECASE)
@@ -93,11 +95,12 @@ def join_span(lines: List[str], seps: List[str], start: int, end: int) -> str:
 
 
 
-def pretranslate(chunk: str, results: List[Dict]) -> str:
-    """Replace every occurrence of each found dictionary phrase in the chunk with its Twi
-    translation (case-insensitive, whole words, longest phrase first, one pass so a translation
-    is never replaced again). The translation takes the match's casing: all caps, capitalised
-    (sentence start or a proper noun), or lowercase. Phrases not in the dictionary, or not verbatim in the chunk, stay English."""
+def pretranslate(chunk: str, results: List[Dict], recase: bool = True) -> str:
+    """Replace every occurrence of each found phrase in the chunk with its Twi translation in
+    angle brackets, "<twi>" (case-insensitive, whole words, longest phrase first, one pass so a
+    translation is never replaced again). The translation takes the match's casing: all caps,
+    capitalised (sentence start or a proper noun), or lowercase; recase=False inserts it exactly
+    as given. Phrases without a translation, or not verbatim in the chunk, stay English."""
     table = {" ".join(r["phrase"].lower().split()): r["translations"][0]
              for r in results if r.get("found", bool(r["translations"])) and r["translations"]}
     if not table:
@@ -107,9 +110,11 @@ def pretranslate(chunk: str, results: List[Dict]) -> str:
 
     def sub(m):
         src, twi = m.group(0), table[" ".join(m.group(0).lower().split())]
+        if not recase:
+            return f"<{twi}>"
         if sum(c.isalpha() for c in src) > 1 and src.isupper():
-            return twi.upper()
-        return (twi[:1].upper() if src[:1].isupper() else twi[:1].lower()) + twi[1:]
+            return f"<{twi.upper()}>"
+        return "<" + (twi[:1].upper() if src[:1].isupper() else twi[:1].lower()) + twi[1:] + ">"
 
     return pattern.sub(sub, chunk)
 
@@ -150,7 +155,8 @@ def glossary_for(chunk: str, lookup: TwiLookup) -> List[Dict]:
 
 
 def clean_output(text: str) -> str:
-    return _NL_SPACES.sub("\n", text).strip()
+    """Normalise line breaks, and unwrap any pretranslated "<term>" the model copied with its brackets."""
+    return _INSERTED.sub(r"\1", _NL_SPACES.sub("\n", text)).strip()
 
 
 def protect_leaders(text: str) -> List[Tuple[str, bool]]:

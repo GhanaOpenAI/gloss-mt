@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gen_eval import batched_generate, sample_examples, with_gen_metrics  # noqa: E402
 from train_seq2seq import DATASET, disk_guard, load_chunks  # noqa: E402
+from twi_translate.seq2seq import clean_output  # noqa: E402
 from twi_translate.translategemma import END_OF_TURN, load_translategemma, render_prompt  # noqa: E402
 
 IGNORE = -100
@@ -119,7 +120,7 @@ def main():
         prompts = [render_prompt(tok, e["input"], None) for e in examples]
         outs = batched_generate(m, tok, prompts, args.batch_size * 4, 1024, decoder_only=True,
                                 eos_token_id=eos, pad_token_id=tok.pad_token_id)
-        return [o.strip() for o in outs]
+        return [clean_output(o) for o in outs]
 
     trainer_cls = with_gen_metrics(Trainer)
     trainer_cls.gen_examples, trainer_cls.gen_fn = gen_examples, staticmethod(gen_fn)
