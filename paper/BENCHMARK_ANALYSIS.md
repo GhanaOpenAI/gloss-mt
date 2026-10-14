@@ -93,7 +93,7 @@ Encoder-decoder translation models (NLLB, umT5) and translation-specialised LLMs
 3. **In-place pretranslation.** Every found phrase is replaced inside the English chunk by its Twi translation (whole words, longest phrase first, source casing kept); phrases not in the dictionary stay English. For example, *"Our people have courage, but courage without foundation is foolishness."* becomes *"Our nnipa have akokoduro, but akokoduro without fapem is nkwasiasɛm."*
 4. **Fine-tuning.** NLLB-200 3.3B is fine-tuned with LoRA (r=32 on all attention and feed-forward projections plus the new-line embedding; 69M trainable parameters, 2%) to translate these mixed inputs into the gold Twi chunk (32,806 training chunks). Every 1,000 steps the model translates 200 fixed validation chunks; the checkpoint with the best mean of BLEU, chrF2 and 100·e^(−loss) is kept, with early stopping. The best checkpoint came at step 8,000 (~8 epochs; validation chrF2 68.55, BLEU 46.82).
 
-The chunked, pretranslated data is released as [`ghanaopenai/twi-translation-glossary-chunks`](https://huggingface.co/datasets/ghanaopenai/twi-translation-glossary-chunks) and the model as [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b).
+The chunked, pretranslated data is released as [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi) and the model as [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b).
 
 ### 5.3 Results (English → Asante Twi, chrF2)
 

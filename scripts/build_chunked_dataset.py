@@ -15,7 +15,7 @@ Alignments are cached in --align-cache (JSONL, resumable); re-running only sends
 
   python scripts/build_chunked_dataset.py --limit 40                 # pilot: print samples only
   python scripts/build_chunked_dataset.py --out build/glossary-chunks \\
-      --push ghanaopenai/twi-translation-glossary-chunks
+      --push ghanaopenai/gloss-mt-parallel-en-twi
 """
 
 import argparse

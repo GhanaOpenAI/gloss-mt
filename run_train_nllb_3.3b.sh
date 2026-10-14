@@ -8,7 +8,7 @@ VENV="$PROJ/.venv-seq2seq"  # .venv-train packages (via .pth) + spaCy
 LOG_DIR="$PROJ/logs"
 mkdir -p "$LOG_DIR" "$OUT"
 
-echo "=== [1/2] LoRA fine-tune (r=32) of facebook/nllb-200-3.3B on ghanaopenai/twi-translation-glossary-chunks (eng_Latn -> twi_Latn, best by composite of BLEU/chrF2/loss; best + last checkpoints kept) ==="
+echo "=== [1/2] LoRA fine-tune (r=32) of facebook/nllb-200-3.3B on ghanaopenai/gloss-mt-parallel-en-twi (eng_Latn -> twi_Latn, best by composite of BLEU/chrF2/loss; best + last checkpoints kept) ==="
 export LD_LIBRARY_PATH=/usr/local/cuda-13.0/compat:$LD_LIBRARY_PATH
 # GEMINI_API_KEY: GeminiScore is reported in the final eval only (not used to pick checkpoints)
 [ -f "$PROJ/.env" ] && set -a && . "$PROJ/.env" && set +a

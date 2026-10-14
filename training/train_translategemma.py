@@ -1,5 +1,5 @@
 """LoRA fine-tune of TranslateGemma on the chunked English-Twi dataset
-ghanaopenai/twi-translation-glossary-chunks, with the same inputs as train_seq2seq.py
+ghanaopenai/gloss-mt-parallel-en-twi, with the same inputs as train_seq2seq.py
 (load_chunks: english_pretranslated_gold for training, english_pretranslated for validation),
 rendered with TranslateGemma's own prompt (twi_translate.translategemma.render_prompt); the
 loss covers only the Twi chunk and the closing <end_of_turn>. Single GPU, bf16 + TF32.

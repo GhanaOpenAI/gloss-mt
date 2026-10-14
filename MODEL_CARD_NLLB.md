@@ -13,7 +13,7 @@ tags:
 - GLOSS-MT
 base_model: facebook/nllb-200-3.3B
 datasets:
-- ghanaopenai/twi-translation-glossary-chunks
+- ghanaopenai/gloss-mt-parallel-en-twi
 metrics:
 - chrf
 - bleu
@@ -33,7 +33,7 @@ fixed pipeline instead of tool calls, so there is no reasoning step and no LLM s
 - **Supported by:** [Ghana NLP](https://ghananlp.org)
 - **Code:** [GhanaOpenAI/gloss-mt](https://github.com/GhanaOpenAI/gloss-mt) (`twi_translate.seq2seq`)
 - **Live demo:** [Hugging Face Spaces: GLOSS-MT](https://huggingface.co/spaces/ghanaopenai/gloss-mt)
-- **Training data:** [`ghanaopenai/twi-translation-glossary-chunks`](https://huggingface.co/datasets/ghanaopenai/twi-translation-glossary-chunks)
+- **Training data:** [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi)
 - **Dictionary:** 545,633 English → Twi phrases, one translation each (`twi_dictionary_single.tsv.gz`)
 
 ## How it works

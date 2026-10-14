@@ -1,5 +1,5 @@
 """Fine-tune umT5 or NLLB (full or LoRA) on the chunked English-Twi dataset
-ghanaopenai/twi-translation-glossary-chunks (built by scripts/build_chunked_dataset.py).
+ghanaopenai/gloss-mt-parallel-en-twi (built by scripts/build_chunked_dataset.py).
 
 Every chunk is one example -> its gold Twi chunk. Training inputs are english_pretranslated_gold:
 the chunk's noun phrases replaced in place by "<Twi>" spans that Gemini aligned in the gold chunk,
@@ -29,11 +29,10 @@ from typing import Dict, List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from twi_translate.seq2seq import (  # noqa: E402
-    TRANSLATE_PREFIX, clean_output, load_seq2seq, nllb_langs, prepare_tokenizer)
+    TRANSLATE_PREFIX, clean_output, load_seq2seq, nllb_langs,
+    prepare_tokenizer)
 
-from gen_eval import batched_generate, sample_examples, with_gen_metrics  # noqa: E402
-
-DATASET = "ghanaopenai/twi-translation-glossary-chunks"
+DATASET = "ghanaopenai/gloss-mt-parallel-en-twi"
 LORA_TARGETS = r".*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2|q|k|v|o|wi_0|wi_1|wo)$"  # NLLB and umT5
 
 
