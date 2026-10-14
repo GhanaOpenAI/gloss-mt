@@ -25,8 +25,7 @@ import os
 from typing import Dict, List
 
 IGNORE = -100
-GEMMA_LORA_TARGETS = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$"
-QWEN_LORA_TARGETS = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+LORA_TARGETS = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)$"
 TEMPLATE_KWARGS = {"enable_thinking": True}
 
 
@@ -43,44 +42,26 @@ def _common_prefix(a: str, b: str) -> int:
     return i
 
 
-def assistant_char_spans(tok, messages: List[Dict], tools, is_qwen: bool = False) -> (str, List[tuple]):
+def assistant_char_spans(tok, messages: List[Dict], tools) -> (str, List[tuple]):
     """Render the conversation; return the text and char spans of every assistant turn."""
-    if is_qwen:
-        full = tok.apply_chat_template(messages, tools=tools, tokenize=False)
-        asst_tag = "<|im_start|>assistant\n"
-        end_tag = "<|im_end|>"
-        spans = []
-        pos = 0
-        while True:
-            start = full.find(asst_tag, pos)
-            if start == -1:
-                break
-            content_start = start + len(asst_tag)
-            end = full.find(end_tag, content_start)
-            if end == -1:
-                break
-            spans.append((content_start, end + len(end_tag)))
-            pos = end + len(end_tag)
-        return full, spans
-    else:
-        render = lambda msgs, gen=False: tok.apply_chat_template(  # noqa: E731
-            msgs, tools=tools, tokenize=False, add_generation_prompt=gen, **TEMPLATE_KWARGS)
-        full = render(messages)
-        spans = []
-        for i, m in enumerate(messages):
-            if m["role"] != "assistant":
-                continue
-            start = _common_prefix(render(messages[:i], gen=True), full)
-            end = _common_prefix(render(messages[: i + 1]), full)
-            if end > start:
-                spans.append((start, end))
-        return full, spans
+    render = lambda msgs, gen=False: tok.apply_chat_template(  # noqa: E731
+        msgs, tools=tools, tokenize=False, add_generation_prompt=gen, **TEMPLATE_KWARGS)
+    full = render(messages)
+    spans = []
+    for i, m in enumerate(messages):
+        if m["role"] != "assistant":
+            continue
+        start = _common_prefix(render(messages[:i], gen=True), full)
+        end = _common_prefix(render(messages[: i + 1]), full)
+        if end > start:
+            spans.append((start, end))
+    return full, spans
 
 
-def tokenize_example(ex: Dict, tok, max_len: int, is_qwen: bool = False) -> Dict:
+def tokenize_example(ex: Dict, tok, max_len: int) -> Dict:
     messages = _clean(ex["messages"])
     tools = ex["tools"]
-    text, spans = assistant_char_spans(tok, messages, tools, is_qwen=is_qwen)
+    text, spans = assistant_char_spans(tok, messages, tools)
     enc = tok(text, add_special_tokens=False, return_offsets_mapping=True)
     ids, offsets = enc["input_ids"], enc["offset_mapping"]
     if len(ids) > max_len:
@@ -93,7 +74,7 @@ def tokenize_example(ex: Dict, tok, max_len: int, is_qwen: bool = False) -> Dict
 
 
 def load_model(args):
-    """Return a PEFT-wrapped model with LoRA on the linear layers."""
+    """Return a PEFT-wrapped model with LoRA on the language-model linear layers only."""
     import torch
 
     if args.backend == "unsloth":
@@ -114,11 +95,9 @@ def load_model(args):
     model = AutoModelForCausalLM.from_pretrained(
         args.model, dtype=torch.bfloat16, attn_implementation="sdpa", device_map={"": 0})
     model.config.use_cache = False
-    is_qwen = "qwen" in args.model.lower()
-    targets = QWEN_LORA_TARGETS if is_qwen else GEMMA_LORA_TARGETS
     return get_peft_model(model, LoraConfig(
         r=args.lora_r, lora_alpha=2 * args.lora_r, lora_dropout=0.05, task_type="CAUSAL_LM",
-        target_modules=targets))
+        target_modules=LORA_TARGETS))
 
 
 def main():
@@ -154,11 +133,10 @@ def main():
     torch.backends.cudnn.allow_tf32 = True
 
     tok = AutoTokenizer.from_pretrained(args.model)
-    is_qwen = "qwen" in args.model.lower()
     files = {s: os.path.join(args.data, f"{s}.jsonl") for s in ("train", "validation")}
     ds = load_dataset("json", data_files=files)
     keep = {"input_ids", "labels", "attention_mask"}
-    ds = ds.map(lambda ex: tokenize_example(ex, tok, args.max_len, is_qwen=is_qwen), num_proc=16,
+    ds = ds.map(lambda ex: tokenize_example(ex, tok, args.max_len), num_proc=16,
                 remove_columns=[c for c in ds["train"].column_names if c not in keep])
     ds = ds.filter(lambda ex: len(ex["input_ids"]) > 0)
     print({s: len(d) for s, d in ds.items()}, flush=True)

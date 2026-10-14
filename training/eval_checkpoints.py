@@ -26,12 +26,12 @@ from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 TEMPLATE_KWARGS = {"enable_thinking": True}
-THOUGHT_RE = re.compile(r"<(?:thought|think)>.*?</(?:thought|think)>", re.DOTALL)
+THOUGHT_RE = re.compile(r"<thought>.*?</thought>", re.DOTALL)
 
 
 def extract_translation(text: str) -> str:
     """Extract translation by stripping thought tags or channels."""
-    # 1. Strip <thought>...</thought> or <think>...</think> if present
+    # 1. Strip <thought>...</thought> if present
     cleaned = THOUGHT_RE.sub("", text).strip()
     # 2. Strip Gemma 4 channel tokens if present
     if "<channel|>" in cleaned:

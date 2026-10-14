@@ -65,37 +65,7 @@ def parse_tool_calls(text: str) -> Tuple[str, List[ToolCall]]:
         except (json.JSONDecodeError, ValueError):
             continue
         calls.append({"id": f"call_{uuid.uuid4().hex[:12]}", "name": name, "arguments": args})
-
-    # Fallback for unclosed <tool_call>
-    if not calls and "<tool_call>" in text:
-        idx = text.find("<tool_call>")
-        raw = text[idx + len("<tool_call>"):].strip()
-        brace_count = 0
-        json_str = ""
-        for char in raw:
-            json_str += char
-            if char == "{":
-                brace_count += 1
-            elif char == "}":
-                brace_count -= 1
-                if brace_count == 0:
-                    break
-        if json_str and brace_count == 0:
-            try:
-                obj = json.loads(json_str)
-                args = obj.get("arguments", {})
-                if isinstance(args, str):
-                    try:
-                        args = json.loads(args)
-                    except json.JSONDecodeError:
-                        args = {}
-                calls.append({"id": f"call_{uuid.uuid4().hex[:12]}", "name": obj.get("name", ""), "arguments": args})
-            except json.JSONDecodeError:
-                pass
-
     content = _GEMMA_CALL.sub("", _HERMES_CALL.sub("", text))
-    if "<tool_call>" in content:
-        content = re.sub(r"<tool_call>.*?(?:</tool_call>|$)", "", content, flags=re.DOTALL)
     return content.strip(), calls
 
 
@@ -109,8 +79,6 @@ def split_reasoning(text: str) -> Tuple[str, str]:
     if "</think>" in text:
         reasoning, answer = text.split("</think>", 1)
         return reasoning.replace("<think>", "").strip(), answer.strip()
-    if "<think>" in text:
-        text = text.replace("<think>", "").strip()
     # Numbered reasoning traces when special channel tokens were stripped
     lines = text.strip().split("\n")
     if lines and re.match(r"^\d+\.\s+", lines[0]):
@@ -195,11 +163,11 @@ class OpenAIBackend:
 
     def chat(self, messages: List[Dict], tools: Optional[List[Dict]], temperature: float = 0.0):
         """Returns (answer, tool_calls, reasoning)."""
-        extra = {"chat_template_kwargs": TEMPLATE_KWARGS}
         kwargs = {"model": self.model, "messages": self._to_api(messages), "temperature": temperature,
                   "max_tokens": self.max_tokens,
-                  "stop": ["<|im_end|>", "<|endoftext|>"],
-                  "extra_body": extra}
+                  "extra_body": {"chat_template_kwargs": TEMPLATE_KWARGS}}
+        if tools:
+            kwargs["tools"] = tools
         msg = self.client.chat.completions.create(**kwargs).choices[0].message
         calls = []
         for c in msg.tool_calls or []:

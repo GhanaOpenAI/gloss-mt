@@ -14,7 +14,7 @@ import shutil
 
 COPY_FILES = ("chat_template.jinja", "processor_config.json", "preprocessor_config.json",
               "generation_config.json", "tokenizer.json", "tokenizer_config.json",
-              "special_tokens_map.json", "tokenizer.model", "vocab.json", "merges.txt")
+              "special_tokens_map.json", "tokenizer.model")
 
 
 def main():
