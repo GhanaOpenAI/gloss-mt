@@ -27,7 +27,7 @@ import re
 import sys
 import time
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 import requests
 
@@ -188,7 +188,11 @@ def align(tw: str, phrases: List[str], api_key: str, model: str) -> Optional[Dic
     returns {"mapping": {...}, "bracketed_twi": "..."} or None if repeated failure."""
     body = {"contents": [{"parts": [{"text": ALIGN_PROMPT.format(
                 tw=tw, phrases=json.dumps(phrases, ensure_ascii=False))}]}],
-            "generationConfig": {"responseMimeType": "application/json", "temperature": 0.0}}
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": 0.0,
+                "thinkingConfig": {"thinkingBudget": 0},
+            }}
     for attempt in range(6):
         try:
             r = requests.post(GEMINI_URL.format(model=model), params={"key": api_key}, json=body, timeout=120)
