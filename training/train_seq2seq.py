@@ -1,12 +1,11 @@
 """Fine-tune umT5 or NLLB (full or LoRA) on the chunked English-Twi dataset
 ghanaopenai/gloss-mt-parallel-en-twi (built by scripts/build_chunked_dataset.py).
 
-Every chunk is one example -> its gold Twi chunk. Training inputs are english_pretranslated_gold:
+Every chunk is one example -> its gold Twi chunk. Training inputs are english_pretranslated:
 the chunk's noun phrases replaced in place by "<Twi>" spans that Gemini aligned in the gold chunk,
 with the same spans in <brackets> in the target (twi_bracketed), so the model learns to carry
-bracketed terms over and translate the rest. Validation inputs are english_pretranslated:
-dictionary terms in brackets, exactly what twi_translate.seq2seq gives the model at inference,
-scored against the plain reference twi. Brackets are removed from generated text (clean_output). umT5 gets a "translate English to Twi: " prefix; NLLB (detected from its
+bracketed terms over and translate the rest. Validation uses the same pair and is
+scored against the plain reference twi; the Nsaku MT benchmark is run separately. Brackets are removed from generated text (clean_output). umT5 gets a "translate English to Twi: " prefix; NLLB (detected from its
 tokenizer) gets eng_Latn -> twi_Latn language codes instead.
 
 Full fine-tune: bf16 autocast over fp32 weights, Adafactor. --lora-r N instead trains LoRA
@@ -39,14 +38,12 @@ LORA_TARGETS = r".*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2|q|k|v|o|wi_0|wi_1|wo
 
 
 def load_chunks(data: str, split: str) -> List[Dict]:
-    """The split's chunks as {"input", "tgt", "chunk"}: training reads english_pretranslated_gold and
-    twi_bracketed (gold spans in <brackets> on both sides); validation/test read english_pretranslated
-    (dictionary terms in brackets, the inference input) and the plain reference twi."""
+    """The split's chunks as {"input", "tgt", "chunk"}: every split reads english_pretranslated and
+    twi_bracketed (gold spans in <brackets> on both sides); ref is the plain reference twi."""
     from datasets import load_dataset, load_from_disk
 
     rows = load_from_disk(data)[split] if os.path.isdir(data) else load_dataset(data, split=split)
-    src, tgt = ("english_pretranslated_gold", "twi_bracketed") if split == "train" else ("english_pretranslated", "twi")
-    return [{"input": r[src], "tgt": r[tgt], "chunk": r["english"], "ref": r["twi"]} for r in rows]
+    return [{"input": r["english_pretranslated"], "tgt": r["twi_bracketed"], "chunk": r["english"], "ref": r["twi"]} for r in rows]
 
 
 def disk_guard(path: str, min_free_gb: float):

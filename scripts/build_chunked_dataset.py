@@ -4,8 +4,7 @@ Each document of data/{train,validation,test}.jsonl is split into its line-align
 lines and consecutive lines are packed into chunks of at most --chunk-tokens umT5 tokens. For
 each chunk, spaCy extracts the noun phrases (glossary_for, as at inference), and:
 
-  - english_pretranslated: the dictionary translations inserted as "<twi>" (inference input);
-  - english_pretranslated_gold: the Twi spans of the gold chunk that Gemini maps the phrases
+  - english_pretranslated: the Twi spans of the gold chunk that Gemini maps the phrases
     to (it sees only the Twi chunk and the English phrases), inserted as "<twi>" (training
     input). A span is kept only if it is in the gold chunk verbatim, on the same line as its
     phrase;
@@ -34,7 +33,7 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from twi_translate import TwiLookup  # noqa: E402
 from twi_translate.seq2seq import (  # noqa: E402
-    GLOSSARY_DICT, glossary_for, join_span, pack_lines, pretranslate, split_lines)
+    GLOSSARY_DICT, glossary_for, join_span, pack_lines, split_lines)
 
 SOURCE_DATASET = "ghanaopenai/twi-translation-tool-calling"
 
@@ -101,18 +100,16 @@ splits and gold Twi references, without the tool-call trajectories and reasoning
 4. **Gold alignment.** `{align_model}` is given the gold Twi chunk and the English noun phrases
    (not the English chunk) and maps each phrase to the exact span of the Twi chunk that
    translates it (or nothing). A span is kept only if it occurs verbatim in the gold Twi chunk
-   **on the same line** as its English phrase and differs from the English (`gold_terms`).
-5. **Pretranslation.** Every occurrence of a phrase is replaced in the chunk by its Twi in angle
-   brackets, `<twi>` (case-insensitive, whole words, longest phrase first; all-caps and
-   capitalised matches keep that casing). Phrases without a translation stay English.
-   - `english_pretranslated_gold` uses the gold-aligned spans, and `twi_bracketed` is the gold
+   **on the same line** as its English phrase and differs from the English.
+5. **Pretranslation.** A phrase is replaced in the chunk by its Twi in angle brackets,
+   `<twi>` (case-insensitive, whole words, longest phrase first). In the gold pair a phrase is
+   bracketed only as many times as its Twi span is bracketed in the gold chunk, so both sides
+   carry the same terms. Phrases without a translation stay English.
+   - `english_pretranslated` uses the gold-aligned spans, and `twi_bracketed` is the gold
      Twi with the same spans in `<brackets>`: every inserted term is what the reference really
      says and sits in the same place on both sides, so a model trained on this pair learns to
      **keep** the bracketed terms and translate the English around them. Built from the
-     reference: use for **training only** (brackets are removed from the model's output).
-   - `english_pretranslated` uses the dictionary translations: what a model sees at
-     inference, for **validation and test**. (Dictionary terms match the reference only ~31%
-     of the time, which is why they are not used for training.)
+     reference (brackets are removed from the model's output).
 
 The build script is `scripts/build_chunked_dataset.py` in
 [GhanaOpenAI/gloss-mt](https://github.com/GhanaOpenAI/gloss-mt), which uses the same
@@ -122,19 +119,13 @@ The build script is `scripts/build_chunked_dataset.py` in
 
 | column | content |
 |---|---|
-| `id` | source document id in `{source}` |
-| `chunk_index` / `num_chunks` | position of the chunk within its document |
 | `english` | English chunk |
-| `english_pretranslated` | English chunk with its dictionary phrases replaced by `<Twi translation>` (inference / evaluation input) |
-| `english_pretranslated_gold` | English chunk with its phrases replaced by `<the Twi span the gold chunk uses>` (training input) |
-| `twi_bracketed` | gold Twi chunk with the aligned spans in `<brackets>` (training target) |
+| `english_pretranslated` | English chunk with its phrases replaced by `<the Twi span the gold chunk uses>` (model input) |
+| `twi_bracketed` | gold Twi chunk with the aligned spans in `<brackets>` (model target) |
 | `twi` | gold Twi chunk (human reference, no brackets) |
-| `glossary` | list of `{{phrase, translation, found}}`; when `found` is false the phrase is not in the dictionary and `translation` is the English phrase itself |
-| `gold_terms` | list of `{{phrase, translation}}`: noun phrases and the Twi span of the gold chunk aligned to them, used for `english_pretranslated_gold` |
-| `source` | origin of the document (`pristine`, `ghana_chat_en2tw`) |
 
-Joining a document's chunks in `chunk_index` order (with the original line breaks) gives back
-the full document.
+Every `<term>` in `english_pretranslated` has exactly one matching `<term>` in
+`twi_bracketed` (checked at build time).
 
 ## Statistics
 
@@ -144,8 +135,7 @@ the full document.
 
 ## Example input format
 
-Models are trained on `english_pretranslated_gold` and translate `english_pretranslated` at
-inference (with `translate English to Twi: ` in front for umT5; NLLB uses its
+Models read `english_pretranslated` and produce `twi_bracketed` (with `translate English to Twi: ` in front for umT5; NLLB uses its
 eng_Latn/twi_Latn codes instead):
 
 ```
@@ -266,42 +256,36 @@ def chunk_split(rows, tok, lookup, chunk_tokens):
     return out, skipped
 
 
-def apply_en_gold(en: str, mapping: Dict[str, Optional[str]], allowed_spans: set) -> Tuple[str, List[Dict]]:
-    """Replace matched English noun phrases with <twi_span> in en.
-    Only phrases whose Twi span appears in allowed_spans are replaced.
-    Longest phrase first, whole words, case-insensitive."""
-    valid_pairs = []
+COLUMNS = ["english", "english_pretranslated", "twi", "twi_bracketed"]
+BRACKET = re.compile(r"<([^<>\n]+)>")
+
+
+def pair_brackets(en: str, mapping: Dict[str, Optional[str]], bracketed_twi: str) -> Tuple[str, str, List[Dict]]:
+    """Bracket the same terms on both sides. Gemini maps each English phrase to one Twi span and
+    brackets every occurrence it uses in the Twi chunk, so for each (phrase, span) we bracket
+    min(English occurrences, Twi occurrences) of it, first to last on both sides, and unbracket
+    the Twi occurrences that have no English partner. Returns (english, twi, terms used)."""
+    twi_count = Counter(BRACKET.findall(bracketed_twi))
+    pairs = {}
     for phrase, span in (mapping or {}).items():
-        if not span or not isinstance(span, str):
-            continue
-        s = span.strip()
-        if s and s in allowed_spans:
-            valid_pairs.append((phrase.strip(), s))
+        if isinstance(span, str) and phrase.strip() and span.strip() in twi_count:
+            pairs.setdefault(" ".join(phrase.split()), span.strip())
+    kept, used = Counter(), []
+    for phrase in sorted(pairs, key=len, reverse=True):
+        span = pairs[phrase]
+        rx = re.compile(r"(?<!\w)" + r"\s+".join(map(re.escape, phrase.split())) + r"(?!\w)", re.IGNORECASE)
+        occ = [m for m in rx.finditer(en) if not re.search(r"<[^<>]*$", en[:m.start()])]
+        for m in reversed(occ[:max(0, twi_count[span] - kept[span])]):
+            used.append({"phrase": m.group(0), "translation": span})
+            en = en[:m.start()] + f"<{span}>" + en[m.end():]
+            kept[span] += 1
+    seen = Counter()
 
-    if not valid_pairs:
-        return en, []
+    def keep_or_strip(m):
+        seen[m.group(1)] += 1
+        return m.group(0) if seen[m.group(1)] <= kept[m.group(1)] else m.group(1)
 
-    # Sort longest phrase first
-    valid_pairs.sort(key=lambda x: len(x[0]), reverse=True)
-    table = {}
-    for p, s in valid_pairs:
-        k = " ".join(p.lower().split())
-        if k not in table:
-            table[k] = s
-
-    alts = [r"\s+".join(map(re.escape, k.split())) for k in sorted(table, key=len, reverse=True)]
-    pattern = re.compile(r"(?<!\w)(?:" + "|".join(alts) + r")(?!\w)", re.IGNORECASE)
-
-    used_terms = []
-
-    def sub(m):
-        key = " ".join(m.group(0).lower().split())
-        twi = table[key]
-        used_terms.append({"phrase": m.group(0), "translation": twi})
-        return f"<{twi}>"
-
-    en_gold = pattern.sub(sub, en)
-    return en_gold, used_terms
+    return en, BRACKET.sub(keep_or_strip, bracketed_twi), used[::-1]
 
 
 def to_row(c, align_result: Optional[Dict]):
@@ -310,23 +294,19 @@ def to_row(c, align_result: Optional[Dict]):
     mapping = (align_result or {}).get("mapping") if isinstance(align_result, dict) else {}
     bracketed_twi = (align_result or {}).get("bracketed_twi") if isinstance(align_result, dict) else ""
 
-    # Verify bracketed_twi: must match original tw when brackets are removed
+    # bracketed_twi must equal the original Twi once the brackets are removed
     clean_bw = re.sub(r"\s+", " ", (bracketed_twi or "").replace("<", "").replace(">", "")).strip()
     clean_tw = re.sub(r"\s+", " ", tw).strip()
-
+    en_gold, target_bracketed, gold_terms_used = en, tw, []
     if bracketed_twi and clean_bw == clean_tw:
-        target_bracketed = bracketed_twi
-        allowed_spans = set(re.findall(r"<([^<>\n]+)>", bracketed_twi))
-    else:
-        target_bracketed = tw
-        allowed_spans = set()
-
-    en_gold, gold_terms_used = apply_en_gold(en, mapping, allowed_spans)
+        en_gold, target_bracketed, gold_terms_used = pair_brackets(en, mapping, bracketed_twi)
+        if Counter(BRACKET.findall(en_gold)) != Counter(BRACKET.findall(target_bracketed)):
+            en_gold, target_bracketed, gold_terms_used = en, tw, []
 
     return {
         "id": c["row"]["id"], "chunk_index": c["index"], "num_chunks": c["num"],
-        "english": en, "english_pretranslated": pretranslate(en, c["gloss"]),
-        "english_pretranslated_gold": en_gold,
+        "english": en,
+        "english_pretranslated": en_gold,
         "twi": tw, "twi_bracketed": target_bracketed,
         "glossary": [{"phrase": g["phrase"], "translation": g["translations"][0], "found": g["found"]}
                      for g in c["gloss"]],
@@ -372,10 +352,11 @@ def main():
 
     cache = align_all([c for cs in chunks.values() for c in cs], args.align_cache, api_key, args.align_model,
                       args.workers)
-    splits, stats = {}, []
+    splits, stats, full = {}, [], {}
     for split, cs in chunks.items():
         rows = [to_row(c, cache.get(c["key"])) for c in cs]
-        splits[split] = Dataset.from_list(rows)
+        full[split] = rows
+        splits[split] = Dataset.from_list(rows).select_columns(COLUMNS)
         found = sum(g["found"] for r in rows for g in r["glossary"])
         total = sum(len(r["glossary"]) for r in rows)
         hit = sum(any(g["found"] for g in r["glossary"]) for r in rows)
@@ -386,17 +367,17 @@ def main():
               f"{sum(bool(r['gold_terms']) for r in rows) / len(rows):.1%} of chunks with >=1", flush=True)
 
     if args.limit:
-        for r in splits["train"].select(range(min(5, len(splits["train"])))):
-            print("\nENGLISH:", r["english"], "\nSOURCE :", r["english_pretranslated_gold"],
+        for r in full["train"][:5]:
+            print("\nENGLISH:", r["english"], "\nSOURCE :", r["english_pretranslated"],
                   "\nTARGET :", r["twi_bracketed"], "\nGOLD   :", r["twi"], "\nTERMS  :", [(g["phrase"], g["translation"]) for g in r["gold_terms"]])
         return
 
     ds = DatasetDict(splits)
     os.makedirs(args.out, exist_ok=True)
     ds.save_to_disk(os.path.join(args.out, "dataset"))
-    ex = next(r for r in splits["train"] if 3 <= len(r["gold_terms"]) and len(r["english"]) < 300)
+    ex = next(r for r in full["train"] if 3 <= len(r["gold_terms"]) and len(r["english"]) < 300)
     example = "\n".join([f"english:                    {ex['english']}",
-                         f"english_pretranslated_gold: {ex['english_pretranslated_gold']}",
+                         f"english_pretranslated: {ex['english_pretranslated']}",
                          f"twi_bracketed:              {ex['twi_bracketed']}",
                          f"twi:                        {ex['twi']}"])
     card = CARD.format(source=SOURCE_DATASET, skipped=skipped, chunk_tokens=args.chunk_tokens,
