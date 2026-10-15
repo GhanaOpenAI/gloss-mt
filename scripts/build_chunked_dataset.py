@@ -237,9 +237,29 @@ def align_all(jobs: List[Dict], cache_path: str, api_key: str, model: str, worke
     return cache
 
 
-def chunk_split(rows, tok, lookup, chunk_tokens):
+WATTS = re.compile(r"\b(watts|Watts|WATTS)(?=[A-Za-z])")
+
+
+def repair_watts(text: str) -> str:
+    """The source English has a normalisation glitch: a word-initial "w" became "watts"
+    ("wattshich" for "which", "wattsas" for "was"). Put the "w" back; a bare "Watts"/"watts" stays."""
+    def fix(m):
+        rest = text[m.end():m.end() + 8]
+        if m.group(1) == "watts" and rest.lower().startswith("ich"):
+            return "wh"
+        if m.group(1) == "Watts" and rest.startswith("ich"):
+            return "Wh"
+        if m.group(1) == "WATTS" or (m.group(1) == "watts" and rest[:1].isupper() and rest.split()[0].isupper()):
+            return "W"
+        return "W" if m.group(1) == "Watts" else "w"
+    return WATTS.sub(fix, text)
+
+
+def chunk_split(rows, tok, lookup, chunk_tokens, repair=False):
     out, skipped = [], 0
     for r in rows:
+        if repair:
+            r = {**r, "english": repair_watts(r["english"])}
         en_lines, en_seps = split_lines(r["english"])
         tw_lines, tw_seps = split_lines(r["translation"])
         if len(en_lines) != len(tw_lines):
@@ -324,6 +344,7 @@ def main():
     ap.add_argument("--chunk-tokens", type=int, default=192)
     ap.add_argument("--align-model", default="gemini-3.8-flash")
     ap.add_argument("--align-cache", default="build/gold_alignment_cache.jsonl")
+    ap.add_argument("--repair-watts", action="store_true", help="repair the source's \"watts\" glitch (new chunk keys)")
     ap.add_argument("--workers", type=int, default=64)
     ap.add_argument("--limit", type=int, default=0, help="pilot: align the first N train chunks, print, no output")
     ap.add_argument("--push", default=None, help="HF dataset repo id to push to")
@@ -343,7 +364,7 @@ def main():
             rows = [json.loads(line) for line in f if line.strip()]
         if args.limit:
             rows = rows[:args.limit * 2]
-        chunks[split], sk = chunk_split(rows, tok, lookup, args.chunk_tokens)
+        chunks[split], sk = chunk_split(rows, tok, lookup, args.chunk_tokens, args.repair_watts)
         if args.limit:
             chunks[split] = chunks[split][:args.limit]
         skipped += sk
