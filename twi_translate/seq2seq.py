@@ -54,6 +54,19 @@ def nllb_langs(tok) -> Optional[Tuple[str, str]]:
     return ("eng_Latn", "twi_Latn") if "nllb" in type(tok).__name__.lower() else None
 
 
+def task_prefix(tok) -> str:
+    """The text prefix the model's inputs start with: umT5 (a T5 tokenizer) is told the task in
+    text; NLLB takes language codes and an OPUS-MT (Marian) model is a single language pair."""
+    return TRANSLATE_PREFIX if "t5" in type(tok).__name__.lower() else ""
+
+
+def default_chunk_tokens(tok) -> int:
+    """192 source tokens per chunk, or a quarter of the model's length limit when that is smaller
+    (Marian, 512 -> 128): pretranslated Twi terms make the input longer than the plain English."""
+    limit = tok.model_max_length if tok.model_max_length < 1e6 else 4096
+    return min(192, limit // 4)
+
+
 def load_seq2seq(path: str, **kwargs):
     """AutoModelForSeq2SeqLM, falling back to UMT5 for hub configs that lack `model_type`."""
     from transformers import AutoModelForSeq2SeqLM, UMT5ForConditionalGeneration
@@ -189,8 +202,10 @@ class ChunkedTranslator:
     `encode` (chunk + lookup results -> model input) and `generate` (batched inputs -> outputs).
     With glossary=False the dictionary is skipped (zero-shot baselines)."""
 
-    def __init__(self, tok, lookup: Optional[TwiLookup] = None, chunk_tokens: int = 192, glossary: bool = True):
-        self.tok, self.chunk_tokens, self.glossary = tok, chunk_tokens, glossary
+    def __init__(self, tok, lookup: Optional[TwiLookup] = None, chunk_tokens: Optional[int] = None,
+                 glossary: bool = True):
+        self.tok, self.glossary = tok, glossary
+        self.chunk_tokens = chunk_tokens or default_chunk_tokens(tok)
         self.lookup = (lookup or TwiLookup(GLOSSARY_DICT)) if glossary else None
 
     def encode(self, chunk: str, results: Optional[List[Dict]]):
@@ -236,11 +251,11 @@ class ChunkedTranslator:
 
 
 class Seq2SeqTranslator(ChunkedTranslator):
-    """Encoder-decoder backend: fine-tuned umT5 (task prefix) or NLLB (language codes, no prefix).
-    An NLLB base model with glossary=False is the zero-shot NLLB baseline."""
+    """Encoder-decoder backend: fine-tuned umT5 (task prefix), NLLB (language codes) or OPUS-MT
+    (Marian, no prefix or codes). An NLLB base model with glossary=False is the zero-shot NLLB baseline."""
 
     def __init__(self, model: str, lookup: Optional[TwiLookup] = None, device: Optional[str] = None,
-                 chunk_tokens: int = 192, max_new_tokens: int = 1024, num_beams: int = 1,
+                 chunk_tokens: Optional[int] = None, max_new_tokens: int = 1024, num_beams: int = 1,
                  batch_size: int = 16, glossary: bool = True):
         import torch
         from transformers import AutoTokenizer
@@ -251,7 +266,8 @@ class Seq2SeqTranslator(ChunkedTranslator):
         self.langs = nllb_langs(tok)
         if self.langs:
             tok.src_lang, tok.tgt_lang = self.langs
-        self.prefix = "" if self.langs else TRANSLATE_PREFIX
+        self.prefix = task_prefix(tok)
+        self.max_len = min(1024, tok.model_max_length)  # Marian: 512 positions, input and output
         self.device = device or ("cuda:0" if torch.cuda.is_available() else "cpu")
         dtype = torch.bfloat16 if self.device.startswith("cuda") else torch.float32
         self.model = load_seq2seq(model, dtype=dtype).to(self.device).eval()
@@ -268,9 +284,10 @@ class Seq2SeqTranslator(ChunkedTranslator):
         for b in range(0, len(order), self.batch_size):
             idx = order[b:b + self.batch_size]
             enc = self.tok([inputs[i] for i in idx], return_tensors="pt", padding=True,
-                           truncation=True, max_length=1024).to(self.device)
+                           truncation=True, max_length=self.max_len).to(self.device)
             with self.torch.inference_mode():
-                gen = self.model.generate(**enc, max_new_tokens=self.max_new_tokens, num_beams=self.num_beams,
+                gen = self.model.generate(**enc, max_new_tokens=min(self.max_new_tokens, self.max_len - 2),
+                                          num_beams=self.num_beams,
                                           do_sample=False, **extra)
             for i, g in zip(idx, self.tok.batch_decode(gen, skip_special_tokens=True)):
                 out[i] = clean_output(g)

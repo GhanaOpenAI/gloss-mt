@@ -17,9 +17,10 @@ cd "$PROJ/repo"
 $VENV/bin/python training/train_seq2seq.py \
     --model "$MODEL" \
     --out "$OUT" \
+    --data $PROJ/repo/build/glossary-chunks-v2/dataset \
     --max-src 1024 \
     --epochs 30 \
-    --early-stopping-patience 3 \
+    --early-stopping-patience 5 \
     --lora-r 32 \
     --batch-size 16 \
     --grad-accum 2 \
