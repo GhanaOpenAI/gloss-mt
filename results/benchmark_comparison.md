@@ -10,6 +10,7 @@ Comprehensive document-level benchmark evaluation on the `nsanku-mt-benchmark` s
 | **Google Translate (free endpoint)** | api | **51.26** | 15.67 | 48.06 | 52.3 | 67.15 | 37.54 | 84 |
 | **Khaya AI** | api | **49.92** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
 | **GLOSS-MT (Gemma 4 E4B + Tool Calling)** | llm | **49.75** | 11.45 | 51.23 | 50.8 | 60.75 | 36.23 | 84 |
+| **GLOSS-MT (NLLB-200 3.3B + Glossary)** | open | **50.8** | 13.11 | 50.23 | 51.66 | 64.17 | 37.16 | 84 |
 | **NLLB-200 3.3B** | open | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 | 84 |
 | **NLLB-200 1.3B** | open | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 | 84 |
 | **NLLB-200 600M (distilled)** | open | **46.71** | 12.74 | 44.1 | 50.17 | 57.06 | 35.5 | 84 |
@@ -28,6 +29,7 @@ Technical and administrative domain covering national budgetary allocations, pol
 | Google Translate (free endpoint) | 49.12 | 46.47 | 48.6 | **48.06** |
 | Khaya AI | 48.33 | 46.57 | 48.33 | **47.74** |
 | GLOSS-MT (Gemma 4 E4B + Tool Calling) | 49.52 | 51.31 | 52.87 | **51.23** |
+| GLOSS-MT (NLLB-200 3.3B + Glossary) | 51.22 | 48.73 | 50.75 | **50.23** |
 | NLLB-200 3.3B | 46.06 | 43.54 | 46.14 | **45.25** |
 | NLLB-200 1.3B | 46.24 | 43.75 | 47.16 | **45.72** |
 | NLLB-200 600M (distilled) | 45.36 | 41.72 | 45.21 | **44.1** |
@@ -44,6 +46,7 @@ Formal legalistic text translated into Ghanaian languages.
 | Google Translate (free endpoint) | **52.3** | 9.29 | 0.881 | 1909 / 2098 |
 | Khaya AI | **49.92** | 8.06 | 1.032 | 2265 / 2098 |
 | GLOSS-MT (Gemma 4 E4B + Tool Calling) | **50.8** | 6.19 | 0.947 | 2064 / 2098 |
+| GLOSS-MT (NLLB-200 3.3B + Glossary) | **51.66** | 6.19 | 0.858 | 1863 / 2098 |
 | NLLB-200 3.3B | **52.05** | 10.45 | 0.92 | 1989 / 2098 |
 | NLLB-200 1.3B | **50.47** | 8.12 | 0.956 | 2073 / 2098 |
 | NLLB-200 600M (distilled) | **50.17** | 7.88 | 0.887 | 1913 / 2098 |
@@ -60,6 +63,7 @@ Moral, community, and religious prose.
 | Google Translate (free endpoint) | **67.15** | 5 |
 | Khaya AI | **65.78** | 5 |
 | GLOSS-MT (Gemma 4 E4B + Tool Calling) | **60.75** | 5 |
+| GLOSS-MT (NLLB-200 3.3B + Glossary) | **64.17** | 5 |
 | NLLB-200 3.3B | **56.89** | 5 |
 | NLLB-200 1.3B | **57.46** | 5 |
 | NLLB-200 600M (distilled) | **57.06** | 5 |
@@ -76,6 +80,7 @@ Oral literature and narrative storytelling covering 75 traditional folktales in 
 | Google Translate (free endpoint) | **37.54** | 75 |
 | Khaya AI | **36.22** | 75 |
 | GLOSS-MT (Gemma 4 E4B + Tool Calling) | **36.23** | 75 |
+| GLOSS-MT (NLLB-200 3.3B + Glossary) | **37.16** | 75 |
 | NLLB-200 3.3B | **36.76** | 75 |
 | NLLB-200 1.3B | **36.05** | 75 |
 | NLLB-200 600M (distilled) | **35.5** | 75 |

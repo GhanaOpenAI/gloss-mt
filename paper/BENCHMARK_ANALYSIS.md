@@ -34,9 +34,9 @@ On contemporary standard texts, **GLOSS-MT consistently outperforms the base 4B 
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | **Gemini 3.8 Flash** | Commercial LLM | Cloud | **54.64** | 17.25 | 52.50 | 56.44 | 69.28 | 40.33 | 84 |
 | **Google Translate** | Commercial API | Cloud | **51.26** | 15.67 | 48.06 | 52.30 | 67.15 | 37.54 | 84 |
-| **Khaya AI** | Commercial API | Cloud | **49.91** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
+| **GLOSS-MT NLLB (Ours)** | **Open MT + Dictionary Pretranslation** | **3.3B** | **50.80** | **13.11** | **50.23** | **51.66** | **64.17** | **37.16** | 84 |
+| **Khaya AI** | Commercial API | Cloud | **49.92** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
 | **GLOSS-MT (Ours)** | **LLM + Offline Tool** | **4B** | **49.75** | **11.45** | **51.23** | **50.80** | **60.75** | **36.23** | 84 |
-| **GLOSS-MT NLLB (Ours)** | **Open MT + Dictionary Pretranslation** | **3.3B** | **49.78** | **13.93** | **46.97** | **50.46** | **65.55** | **36.16** | 84 |
 | **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 | 84 |
 | **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 | 84 |
 | **NLLB-200 600M** | Distilled Open MT | 600M | **46.71** | 12.74 | 44.10 | 50.17 | 57.06 | 35.50 | 84 |
@@ -89,9 +89,9 @@ Encoder-decoder translation models (NLLB, umT5) and translation-specialised LLMs
 
 ### 5.2 Method
 1. **Chunking.** Each document is split into lines, and consecutive lines are packed into chunks of at most 192 source tokens, cutting only at line boundaries so that English and Twi chunks stay aligned and markdown structure (headings, lists, tables) is preserved. A literal `"\n"` token is added to the tokenizer.
-2. **Lookup.** Each chunk's noun phrases are extracted with spaCy (as in GLOSS-MT) and looked up in a dictionary with **exactly one translation per phrase**: the 412k entries that previously carried 2–3 candidates were re-translated into a single translation with Gemini 3.8 Flash (545,633 entries).
-3. **In-place pretranslation.** Every found phrase is replaced inside the English chunk by its Twi translation (whole words, longest phrase first, source casing kept); phrases not in the dictionary stay English. For example, *"Our people have courage, but courage without foundation is foolishness."* becomes *"Our nnipa have akokoduro, but akokoduro without fapem is nkwasiasɛm."*
-4. **Fine-tuning.** NLLB-200 3.3B is fine-tuned with LoRA (r=32 on all attention and feed-forward projections plus the new-line embedding; 69M trainable parameters, 2%) to translate these mixed inputs into the gold Twi chunk (32,806 training chunks). Every 1,000 steps the model translates 200 fixed validation chunks; the checkpoint with the best mean of BLEU, chrF2 and 100·e^(−loss) is kept, with early stopping. The best checkpoint came at step 8,000 (~8 epochs; validation chrF2 68.55, BLEU 46.82).
+2. **Lookup.** Each chunk's noun phrases are extracted with spaCy (as in GLOSS-MT) and looked up in a dictionary with **exactly one translation per phrase**: the 412k entries that previously carried 2–3 candidates were re-translated into a single translation with Gemini 3.8 Flash, and every phrase aligned to a single Twi span in the parallel data (step 4) takes that span (613,259 entries).
+3. **In-place pretranslation.** Every found phrase is replaced inside the English chunk by its Twi translation in angle brackets (whole words, longest phrase first, source casing kept); phrases not in the dictionary stay plain English. For example, *"Our people have courage, but courage without foundation is foolishness."* becomes *"Our &lt;nnipa&gt; have &lt;akokoduro&gt;, but &lt;akokoduro&gt; without &lt;fapem&gt; is &lt;nkwasiasɛm&gt;."* The model writes the terms in brackets too, and the pipeline removes them from its output.
+4. **Fine-tuning.** Training inputs are built from the gold translations: Gemini aligns each English noun phrase of a chunk to its span in the reference Twi, and each aligned pair is bracketed on both sides, occurrence for occurrence (31,909 training chunks). NLLB-200 3.3B is fine-tuned with LoRA (r=32 on all attention and feed-forward projections plus the new-line embedding; 69M trainable parameters, 2%) to translate these mixed inputs into the bracketed gold Twi. Every 1,000 steps the model translates 200 fixed validation chunks; the checkpoint with the best mean of BLEU, chrF2 and 100·e^(−loss) is kept, with early stopping. The best checkpoint came at step 13,000 (~13 epochs; validation chrF2 63.66, BLEU 31.73).
 
 The chunked, pretranslated data is released as [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi) and the model as [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b).
 
@@ -99,17 +99,18 @@ The chunked, pretranslated data is released as [`ghanaopenai/gloss-mt-parallel-e
 
 | Domain / Corpus | Documents | NLLB-200 3.3B (base) | GLOSS-MT Gemma 4 E4B | GLOSS-MT NLLB 3.3B | Gain vs base NLLB |
 |---|:---:|:---:|:---:|:---:|:---:|
-| **Citizens' Budget (Finance)** | 3 | 45.25 | **51.23** | 46.97 | +1.72 |
-| **UDHR (Human Rights / Legal)** | 1 | **52.05** | 50.80 | 50.46 | −1.59 |
-| **Watchtower (JW / Religious Prose)** | 5 | 56.89 | 60.75 | **65.55** | **+8.66** |
-| **Akan Folk-Tales (Rattray, 1930)** | 75 | **36.76** | 36.23 | 36.16 | −0.60 |
-| **Mean of datasets (chrF2)** | 84 | 47.74 | 49.75 | **49.78** | **+2.04** |
-| **BLEU** | 84 | **14.15** | 11.45 | 13.93 | −0.22 |
-| **Length ratio** | 84 | 1.01 | 1.19 | **0.99** | |
+| **Citizens' Budget (Finance)** | 3 | 45.25 | **51.23** | 50.23 | +4.98 |
+| **UDHR (Human Rights / Legal)** | 1 | **52.05** | 50.80 | 51.66 | −0.39 |
+| **Watchtower (JW / Religious Prose)** | 5 | 56.89 | 60.75 | **64.17** | **+7.28** |
+| **Akan Folk-Tales (Rattray, 1930)** | 75 | 36.76 | 36.23 | **37.16** | +0.40 |
+| **Mean of datasets (chrF2)** | 84 | 47.74 | 49.75 | **50.80** | **+3.06** |
+| **BLEU** | 84 | **14.15** | 11.45 | 13.11 | −1.04 |
+| **Length ratio** | 84 | 1.01 | 1.20 | **1.00** | |
 
-- **Matches the tool-calling system without tool calls.** GLOSS-MT NLLB reaches the same overall chrF2 as GLOSS-MT Gemma 4 E4B (49.78 vs 49.75) with +2.48 BLEU and a near-exact length ratio, from one beam-search pass per chunk and no LLM server.
-- **The gain concentrates in contemporary prose.** Watchtower rises by +8.66 over base NLLB-200 3.3B and +4.80 over GLOSS-MT Gemma 4 E4B, approaching Khaya AI (65.78).
-- **Finance favours the reasoning model.** On dense budget text GLOSS-MT Gemma 4 E4B remains 4.26 points ahead: the tool-calling model can query any phrase it needs and reason about figures and policy terms, while the fixed pipeline only substitutes the phrases that spaCy extracts and the dictionary covers.
+- **Best open system, ahead of the tool-calling model.** GLOSS-MT NLLB reaches 50.80 chrF2, +1.05 over GLOSS-MT Gemma 4 E4B and above Khaya AI (49.92), behind only Gemini 3.8 Flash and Google Translate, from one beam-search pass per chunk and no LLM server.
+- **The gain concentrates in contemporary prose.** Watchtower rises by +7.28 and Finance by +4.98 over base NLLB-200 3.3B; on Finance the pipeline now comes within 1.0 point of GLOSS-MT Gemma 4 E4B, which can query any phrase it needs and reason about figures and policy terms.
+- **Gold-aligned training data helps.** The previous release, fine-tuned on inputs pretranslated with the dictionary rather than aligned to the references, reached 49.78 chrF2 (Finance 46.97, UDHR 50.46, Watchtower 65.55, Folk-Tales 36.16). Training on gold-aligned brackets raises Finance by +3.26, UDHR by +1.20 and Folk-Tales by +1.00, at a cost of −1.38 on Watchtower and −0.82 BLEU.
+- **Short legal output.** On the UDHR the model's output is 14% shorter than the reference (length ratio 0.86, base NLLB 0.92), so some content may be dropped.
 - **Dictionary terms act as hints, not constraints.** The model often keeps institution names in English (*"Ministry of Finance"*) or prefers its own synonym over a pretranslated term, as the human references in the training data do; terminology control is therefore softer than an explicit constraint.
 
 ### 5.4 Qualitative Note: Table-of-Contents Dot Leaders

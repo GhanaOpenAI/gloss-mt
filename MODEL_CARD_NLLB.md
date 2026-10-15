@@ -34,7 +34,7 @@ fixed pipeline instead of tool calls, so there is no reasoning step and no LLM s
 - **Code:** [GhanaOpenAI/gloss-mt](https://github.com/GhanaOpenAI/gloss-mt) (`twi_translate.seq2seq`)
 - **Live demo:** [Hugging Face Spaces: GLOSS-MT](https://huggingface.co/spaces/ghanaopenai/gloss-mt)
 - **Training data:** [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi)
-- **Dictionary:** 545,633 English → Twi phrases, one translation each (`twi_dictionary_single.tsv.gz`)
+- **Dictionary:** 613,259 English → Twi phrases, one translation each (`twi_dictionary_single.tsv.gz`)
 
 ## How it works
 
@@ -45,17 +45,21 @@ English text
 spaCy noun phrases ──► offline dictionary lookup
   │
   ▼
-found phrases replaced by their Twi translation, in place
+found phrases replaced by their Twi translation in angle brackets, in place
   "Our people have courage, but courage without foundation is foolishness."
-  "Our nnipa have akokoduro, but akokoduro without fapem is nkwasiasɛm."
+  "Our <nnipa> have <akokoduro>, but <akokoduro> without <fapem> is <nkwasiasɛm>."
   │
   ▼
-NLLB-200 3.3B (fine-tuned)  eng_Latn → twi_Latn  ──► Twi chunk, chunks re-joined
+NLLB-200 3.3B (fine-tuned)  eng_Latn → twi_Latn  ──► Twi chunk with the terms in brackets
+  │  brackets removed, chunks re-joined
+  ▼
+Twi text
 ```
 
-Phrases not in the dictionary stay in English. The model learned to translate the rest of the
-sentence around the pretranslated terms. Dot leaders of tables of contents are kept out of the
-model and restored unchanged.
+Only phrases found in the dictionary are bracketed; the others stay plain English for the model
+to translate. The model learned to keep each bracketed term and translate the sentence around it,
+writing the term in brackets too, so the pipeline can strip them. Dot leaders of tables of
+contents are kept out of the model and restored unchanged.
 
 ## Benchmark (nsanku-mt-benchmark, English → Asante Twi)
 
@@ -66,24 +70,27 @@ Document-level chrF2 on the [nsanku MT benchmark](https://github.com/GhanaNLP/ns
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
 | Gemini 3.8 Flash | 54.64 | 17.25 | 1.02 | 52.50 | 40.33 | 69.28 | 56.44 |
 | Google Translate | 51.26 | 15.67 | 1.01 | 48.06 | 37.54 | 67.15 | 52.30 |
-| Khaya AI | 49.91 | 12.79 | 1.04 | 47.74 | 36.22 | 65.78 | 49.92 |
-| **GLOSS-MT (NLLB-200 3.3B + Glossary)** | **49.78** | **13.93** | **0.99** | 46.97 | 36.16 | 65.55 | 50.46 |
-| GLOSS-MT (Gemma 4 E4B + Tool Calling) | 49.75 | 11.45 | 1.19 | 51.23 | 36.23 | 60.75 | 50.80 |
+| **GLOSS-MT (NLLB-200 3.3B + Glossary)** | **50.80** | **13.11** | **1.00** | 50.23 | 37.16 | 64.17 | 51.66 |
+| Khaya AI | 49.92 | 12.79 | 1.04 | 47.74 | 36.22 | 65.78 | 49.92 |
+| GLOSS-MT (Gemma 4 E4B + Tool Calling) | 49.75 | 11.45 | 1.20 | 51.23 | 36.23 | 60.75 | 50.80 |
 | NLLB-200 3.3B (base) | 47.74 | 14.15 | 1.01 | 45.25 | 36.76 | 56.89 | 52.05 |
 
-Fine-tuning plus the dictionary adds 2.0 chrF2 over the base NLLB-200 3.3B (+8.7 on Watchtower),
-and matches the tool-calling GLOSS-MT Gemma 4 E4B with one encoder-decoder pass per chunk.
+Fine-tuning plus the dictionary adds 3.1 chrF2 over the base NLLB-200 3.3B (+5.0 on Finance, +7.3
+on Watchtower) and is the best open model on the benchmark, ahead of Khaya AI and the tool-calling
+GLOSS-MT Gemma 4 E4B, with one encoder-decoder pass per chunk.
 
 ## Training
 
 - **Data:** the 15,134 training documents of `ghanaopenai/twi-translation-tool-calling`, cut into
-  32,806 line-aligned chunks (≤ 192 tokens), each with its dictionary phrases pretranslated in place.
+  31,909 line-aligned chunks (≤ 192 tokens). Each English noun phrase was aligned to its span in the
+  gold Twi with Gemini, and the aligned phrases are bracketed on both sides
+  (`english_pretranslated` → `twi_bracketed`), so the model learns to keep the bracketed terms.
 - **Method:** LoRA r=32, α=64 on every attention and feed-forward projection (69M trainable
   parameters, 2%), plus the embedding of an added `"\n"` token that keeps markdown line structure;
   bf16, AdamW, lr 2e-4, effective batch 32.
 - **Checkpoint choice:** every 1,000 steps the model translated 200 fixed validation chunks; the
-  checkpoint with the best mean of BLEU, chrF2 and 100·e^(−loss) was kept: step 8,000
-  (~8 epochs; validation BLEU 46.82, chrF2 68.55, loss 0.80).
+  checkpoint with the best mean of BLEU, chrF2 and 100·e^(−loss) was kept: step 13,000
+  (~13 epochs; validation BLEU 31.73, chrF2 63.66, loss 0.52).
 
 ## Usage
 
