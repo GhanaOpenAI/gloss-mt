@@ -28,9 +28,11 @@ import sys
 from typing import Dict, List
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from twi_translate.seq2seq import (  # noqa: E402
     TRANSLATE_PREFIX, clean_output, load_seq2seq, nllb_langs,
     prepare_tokenizer)
+from gen_eval import batched_generate, sample_examples, with_gen_metrics  # noqa: E402
 
 DATASET = "ghanaopenai/gloss-mt-parallel-en-twi"
 LORA_TARGETS = r".*\.(q_proj|k_proj|v_proj|out_proj|fc1|fc2|q|k|v|o|wi_0|wi_1|wo)$"  # NLLB and umT5
