@@ -8,8 +8,9 @@ decoder-only runtime becomes a fixed pipeline in code, and the model only transl
   2. extract each chunk's noun phrases with spaCy (twi_translate.extractor, nkrane-style)
   3. look them up in the offline dictionary (TwiLookup, same as the LLM tool)
   4. replace every dictionary phrase in the chunk with its Twi translation in angle brackets,
-     in place (pretranslate: "the <ɔman> has no <tumi>"), and translate the mixed chunk; the
-     brackets mark what was inserted, and the model writes the terms without them
+     in place (pretranslate: "the <ɔman> has no <tumi>"); phrases not in the dictionary stay
+     English. Translate the mixed chunk: the model writes the terms in brackets too, and
+     clean_output removes them
   5. join the Twi chunks with the English separators
 
 Training data (scripts/build_chunked_dataset.py) uses the same chunking and phrase lookup (glossary_for).
@@ -34,6 +35,8 @@ TRANSLATE_PREFIX = "translate English to Twi: "
 _SPLIT = re.compile(r"(\n\s*)")
 _NL_SPACES = re.compile(r" *\n *")
 _INSERTED = re.compile(r"<([^<>\n]{1,120})>")  # a pretranslated term, as pretranslate writes it
+_STRAY = re.compile(r"<(?=\S)|(?<=\S)>")  # an unpaired bracket on a word
+_SPACES = re.compile(r"(?<=\S)[ \t]{2,}")
 _MARKUP = re.compile(r"[|#*`<>\[\]{}=~]|---")
 _LEADERS = re.compile(r"(\s*(?:\.\s?){4,}\s*)")  # dot leaders of a table of contents
 _PAGE_REF = re.compile(r"\s*[ivxlcdm\d][ivxlcdm\d\s.,–-]*", re.IGNORECASE)
@@ -101,8 +104,7 @@ def pretranslate(chunk: str, results: List[Dict], recase: bool = True) -> str:
     translation is never replaced again). The translation takes the match's casing: all caps,
     capitalised (sentence start or a proper noun), or lowercase; recase=False inserts it exactly
     as given. Phrases without a translation, or not verbatim in the chunk, stay English."""
-    table = {" ".join(r["phrase"].lower().split()): r["translations"][0]
-             for r in results if r.get("found", bool(r["translations"])) and r["translations"]}
+    table = {" ".join(r["phrase"].lower().split()): r["translations"][0] for r in results if r["translations"]}
     if not table:
         return chunk
     alts = [r"\s+".join(map(re.escape, k.split())) for k in sorted(table, key=len, reverse=True)]
@@ -139,9 +141,10 @@ def source_casing(phrase: str, chunk: str) -> str:
 
 
 def glossary_for(chunk: str, lookup: TwiLookup) -> List[Dict]:
-    """Dictionary results for the chunk's spaCy noun phrases. A phrase not in the dictionary keeps
-    its English, in the chunk's original casing, as the translation (copy it as is), with found=False.
-    Not-found "phrases" that are markdown residue (table pipes, rules) or have no letters are dropped."""
+    """Dictionary results for the chunk's spaCy noun phrases. Only found phrases are pretranslated;
+    a phrase not in the dictionary is kept with found=False and no translations (it stays English in
+    the chunk, for the model to translate), as written in the chunk. Not-found "phrases" that are
+    markdown residue (table pipes, rules) or have no letters are dropped."""
     results = []
     for r in lookup.lookup_many(extract_noun_phrases(chunk)):
         r["found"] = bool(r["translations"])
@@ -149,14 +152,17 @@ def glossary_for(chunk: str, lookup: TwiLookup) -> List[Dict]:
             if _MARKUP.search(r["phrase"]) or not re.search(r"[^\W\d_]", r["phrase"]):
                 continue
             r["phrase"] = source_casing(r["phrase"], chunk)
-            r["translations"] = [r["phrase"]]
         results.append(r)
     return results
 
 
 def clean_output(text: str) -> str:
-    """Normalise line breaks, and unwrap any pretranslated "<term>" the model copied with its brackets."""
-    return _INSERTED.sub(r"\1", _NL_SPACES.sub("\n", text)).strip()
+    """Normalise line breaks and remove the term brackets the model writes ("<ɔman>" -> "ɔman"):
+    unwrap each bracketed term, then drop any unpaired "<" or ">" left on a word, and the double
+    spaces a term bracketed with inner spaces leaves. A free-standing "<"/">" ("x < 5") is kept."""
+    text = _INSERTED.sub(lambda m: m.group(1).strip(), _NL_SPACES.sub("\n", text))
+    text = _STRAY.sub("", text)
+    return _SPACES.sub(" ", text).strip()
 
 
 def protect_leaders(text: str) -> List[Tuple[str, bool]]:

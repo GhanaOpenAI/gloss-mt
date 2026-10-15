@@ -328,7 +328,7 @@ def to_row(c, align_result: Optional[Dict]):
         "english": en,
         "english_pretranslated": en_gold,
         "twi": tw, "twi_bracketed": target_bracketed,
-        "glossary": [{"phrase": g["phrase"], "translation": g["translations"][0], "found": g["found"]}
+        "glossary": [{"phrase": g["phrase"], "translation": (g["translations"] or [None])[0], "found": g["found"]}
                      for g in c["gloss"]],
         "gold_terms": gold_terms_used,
         "source": c["row"]["source"],

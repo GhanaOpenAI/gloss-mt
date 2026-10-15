@@ -3,8 +3,8 @@ base model and save a standalone model + tokenizer, e.g. to evaluate a chosen ch
 (train_seq2seq.py itself merges only the best checkpoint at the end of a completed run).
 
   python training/merge_seq2seq_lora.py \\
-      --adapter checkpoints/nllb-3.3b-twi-lora/checkpoint-8000 \\
-      --out checkpoints/nllb-3.3b-twi-lora/best-merged
+      --adapter checkpoints/nllb-3.3b-twi/checkpoint-8000 \\
+      --out checkpoints/nllb-3.3b-twi/best-merged
 """
 
 import argparse

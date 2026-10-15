@@ -14,7 +14,7 @@ adapters (bf16 base, AdamW) on every attention/FFN projection plus the embedding
 
 Usage (H200; --data is the HF dataset or a local save_to_disk copy of it):
   python training/train_seq2seq.py --model facebook/nllb-200-3.3B \\
-      --out checkpoints/nllb-3.3b-twi-lora --lora-r 32 --lr 2e-4
+      --out checkpoints/nllb-3.3b-twi --lora-r 32 --lr 2e-4
   python training/train_seq2seq.py --model google/umt5-xl --out checkpoints/umt5-xl-twi
   python training/train_seq2seq.py ... --max-steps 20   # memory/throughput pilot
 """
