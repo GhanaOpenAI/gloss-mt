@@ -11,7 +11,6 @@
 | NLLB-200 600M (distilled) | 46.71 | 50.12 | **+3.41** | full fine-tune, best at ~28 epochs |
 | OPUS-MT en-tw (75M) | 42.52 | 48.00 | **+5.48** | full fine-tune |
 | TranslateGemma 4B | no Twi output zero-shot | 49.81 | n/a | LoRA r=32, best at ~3 epochs |
-| MADLAD-400 3B | 37.14 | in training | | LoRA r=32 |
 
 - **No degradation on chrF2, a small loss on BLEU:** every fine-tuned model scores above its pretrained base on chrF2, in every domain except the UDHR for NLLB 3.3B (−0.39). On BLEU the fine-tuned NLLB models are below their bases (3.3B −1.04, 1.3B −0.86, 600M −0.51), mostly on the UDHR and Watchtower, where the base output is shorter than the reference; OPUS-MT gains BLEU (+1.20).
 - **Fine-tuning burden:** the fine-tune is done once, on a light budget; it is not repeated per domain.
@@ -61,7 +60,7 @@ Our dictionary and fine-tuning corpus are strictly aligned with modern standardi
 ## 3. GLOSS-MT: Dictionary Pretranslation for Dedicated Translation Models
 
 ### 3.1 Motivation
-Encoder-decoder translation models (NLLB, OPUS-MT, MADLAD) and translation-specialised LLMs (TranslateGemma) take only source text in a fixed input format: there is no separate channel through which to give them a terminology list. GLOSS-MT therefore applies the offline dictionary *before* translation, inside the source text, and fine-tunes the model to use the terms it finds there.
+Encoder-decoder translation models (NLLB, OPUS-MT) and translation-specialised LLMs (TranslateGemma) take only source text in a fixed input format: there is no separate channel through which to give them a terminology list. GLOSS-MT therefore applies the offline dictionary *before* translation, inside the source text, and fine-tunes the model to use the terms it finds there.
 
 ### 3.2 Method
 1. **Chunking.** Each document is split into lines, and consecutive lines are packed into chunks of at most 192 source tokens, cutting only at line boundaries so that English and Twi chunks stay aligned and markdown structure (headings, lists, tables) is preserved. A literal `"\n"` token is added to the tokenizer.
@@ -145,9 +144,6 @@ NLLB-200 distilled 600M was fully fine-tuned with the same settings as NLLB 1.3B
 - **The size series is flat once fine-tuned.** Base NLLB spans 46.71–47.74 across the three sizes and GLOSS-MT NLLB spans 50.12–50.80: the dictionary pipeline lifts each size by about 3 chrF2, and a 600M model with the dictionary scores above the base 3.3B model by +2.38.
 - **Same BLEU pattern.** BLEU falls slightly (−0.51), on the UDHR (7.88 → 5.60) and Watchtower (24.26 → 21.61), while chrF2 rises on both.
 - **Higher validation scores did not carry over.** The 600M scored above the 1.3B on validation (chrF2 63.99 vs 62.14) but slightly below it on the benchmark (50.12 vs 50.27), as TranslateGemma did against NLLB 3.3B (Section 3.5).
-
-### 3.8 Next: MADLAD-400 3B
-The same recipe is being applied to MADLAD-400 3B (LoRA r=32, target token `<2ak>`), to test a third architecture. Its first validation evaluation (step 1,000) reached BLEU 21.69 / chrF2 45.83, so the shared embeddings load correctly.
 
 ---
 

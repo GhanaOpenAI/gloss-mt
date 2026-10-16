@@ -6,9 +6,9 @@ every phrase found is replaced **in place** by its Twi translation. The model, f
 use these terms, translates the rest of the sentence around them. Terminology can then be changed
 by editing the dictionary, without new parallel data or retraining.
 
-The same recipe is applied to dedicated translation models (NLLB-200 at three sizes, OPUS-MT,
-MADLAD-400) and a translation-specialised LLM (TranslateGemma 4B), and each is compared with its
-own pretrained base.
+The same recipe is applied to dedicated translation models (NLLB-200 at three sizes, OPUS-MT) and
+a translation-specialised LLM (TranslateGemma 4B), and each is compared with its own pretrained
+base.
 
 | Artifact | Where |
 |---|---|
@@ -134,7 +134,6 @@ The dictionary (`twi_dictionary_single.tsv.gz`) has exactly one translation per 
 | NLLB-200 3.3B / 1.3B / 600M | `training/train_seq2seq.py` (`run_train_nllb_*.sh`) | LoRA r=32 (3.3B, merged with `training/merge_seq2seq_lora.py`) or full (1.3B, 600M) |
 | OPUS-MT en-tw | `training/train_opus_mt.py` (`run_train_opus_mt.sh`) | full |
 | TranslateGemma 4B | `training/train_translategemma.py` (`run_train_translategemma_4b.sh`) | LoRA r=32 |
-| MADLAD-400 3B | `training/train_madlad.py` (`run_train_madlad_3b.sh`) | LoRA r=32 |
 
 Every 1,000 steps the model translates 200 fixed validation chunks
 (`training/gen_eval.py`), and the checkpoint with the best mean of BLEU, chrF2 and
