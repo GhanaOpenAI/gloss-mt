@@ -62,7 +62,7 @@ Our dictionary and fine-tuning corpus are strictly aligned with modern standardi
 ## 3. GLOSS-MT: Dictionary Pretranslation for Dedicated Translation Models
 
 ### 3.1 Motivation
-Encoder-decoder translation models (NLLB, OPUS-MT, MADLAD) and translation-specialised LLMs (TranslateGemma) take only source text: they cannot query a dictionary, and their fixed input formats leave no room for a reasoning trace. GLOSS-MT therefore applies the offline dictionary *before* translation, inside the source text, and fine-tunes the model to use the terms it finds there.
+Encoder-decoder translation models (NLLB, OPUS-MT, MADLAD) and translation-specialised LLMs (TranslateGemma) take only source text in a fixed input format: there is no separate channel through which to give them a terminology list. GLOSS-MT therefore applies the offline dictionary *before* translation, inside the source text, and fine-tunes the model to use the terms it finds there.
 
 ### 3.2 Method
 1. **Chunking.** Each document is split into lines, and consecutive lines are packed into chunks of at most 192 source tokens, cutting only at line boundaries so that English and Twi chunks stay aligned and markdown structure (headings, lists, tables) is preserved. A literal `"\n"` token is added to the tokenizer.
@@ -84,7 +84,7 @@ The chunked, pretranslated data is released as [`ghanaopenai/gloss-mt-parallel-e
 | **BLEU** | 84 | **14.15** | 13.11 | −1.04 |
 | **Length ratio** | 84 | 1.01 | **1.00** | |
 
-- **Best open system.** GLOSS-MT NLLB reaches 50.80 chrF2, above Khaya AI (49.91) and behind only Gemini 3.8 Flash and Google Translate, from one beam-search pass per chunk and no LLM server.
+- **Best open system.** GLOSS-MT NLLB reaches 50.80 chrF2, above Khaya AI (49.91) and behind only Gemini 3.8 Flash and Google Translate, from one beam-search pass per chunk.
 - **The gain concentrates in contemporary prose.** Watchtower rises by +7.28 and Finance by +4.98 over base NLLB-200 3.3B.
 - **Gold-aligned training data helps.** The previous release, fine-tuned on inputs pretranslated with the dictionary rather than aligned to the references, reached 49.78 chrF2 (Finance 46.97, UDHR 50.46, Watchtower 65.55, Folk-Tales 36.16). Training on gold-aligned brackets raises Finance by +3.26, UDHR by +1.20 and Folk-Tales by +1.00, at a cost of −1.38 on Watchtower and −0.82 BLEU.
 - **Short legal output.** On the UDHR the model's output is 14% shorter than the reference (length ratio 0.86, base NLLB 0.92), so some content may be dropped.

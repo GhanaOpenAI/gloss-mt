@@ -1,6 +1,6 @@
-# GLOSS-MT: Grounding Generative LLMs with External Dictionaries for Low-Resource Machine Translation
+# GLOSS-MT: Controllable Low-Resource Machine Translation with External Dictionaries
 
-> **GLOSS-MT**: **G**rounded **L**exical **O**ffline **S**earch for **S**equence **T**ranslation using LLMs
+> **GLOSS-MT**: **G**rounded **L**exical **O**ffline **S**earch for **S**equence **T**ranslation
 
 ## Central Research Question
 
@@ -9,38 +9,40 @@
 Every experiment in this work serves this question, which has three parts:
 1. **Controllability.** Can an operator steer the translation (which term is used for a phrase) by editing an external dictionary, instead of retraining the model?
 2. **Reduced fine-tuning burden.** Can a single, light fine-tune (LoRA on a few percent of the parameters, or a short full fine-tune of a small model) teach a model to use dictionary terms, so that later domain and terminology changes need dictionary entries rather than new parallel data and further training?
-3. **No degradation.** Does the dictionary-grounded model translate at least as well as the pretrained MT model it starts from, measured on an independent document-level benchmark (nsanku-mt-benchmark)?
+3. **No degradation.** Does the dictionary-grounded model translate at least as well as the pretrained MT model it starts from, measured on an independent document-level benchmark (nsanku-mt-benchmark) and on human-translated references?
 
-To test whether the answer holds across model families and sizes, the same data and dictionary pipeline is applied to dedicated MT models (NLLB-200 600M, 1.3B and 3.3B; OPUS-MT en-tw; MADLAD-400 3B), and a translation-specialised LLM (TranslateGemma 4B), and each is compared with its own pretrained base.
+To test whether the answer holds across model families and sizes, the same data and dictionary pipeline is applied to dedicated MT models (NLLB-200 600M, 1.3B and 3.3B; OPUS-MT en-tw; MADLAD-400 3B) and a translation-specialised LLM (TranslateGemma 4B), and each is compared with its own pretrained base.
 
 ## 1. Preamble & Motivation
 
 ### 1.1 The Low-Resource Parallel Corpus Bottleneck
-Building high-fidelity machine translation (MT) systems for low-resource languages—particularly African languages such as Twi (Akan)—remains fundamentally constrained by the scarcity of parallel sentence-level corpora. Traditional supervised sequence-to-sequence architectures and generative large language models (LLMs) depend heavily on millions of verified bilingual sentence pairs to learn semantic alignment, morphological rules, and lexical mappings simultaneously. 
+Building high-fidelity machine translation (MT) systems for low-resource languages—particularly African languages such as Twi (Akan)—remains fundamentally constrained by the scarcity of parallel sentence-level corpora. Supervised translation models depend heavily on large numbers of verified bilingual sentence pairs to learn semantic alignment, morphological rules, and lexical mappings simultaneously.
 
 However, collecting sentence-level parallel text in low-resource environments is cost-prohibitive: it demands deep involvement from specialized bilingual native speakers, professional translators, and linguists who must manually translate, curate, and review long narrative documents. For many global languages with tens of millions of speakers, available parallel digital text constitutes only a fraction of what state-of-the-art MT systems require.
 
+Pretrained multilingual models such as NLLB-200 already cover many of these languages, but adapting them to a new domain or to approved terminology conventionally means collecting more parallel data and fine-tuning again.
+
 ### 1.2 Lowering Community Participation to Lexical Contributions
-Our approach introduces a structural paradigm shift that radically reduces the barrier to native-speaker participation. Instead of demanding thousands of annotated bilingual sentence pairs from scarce linguistic experts, our method reduces the requirement for language community participation to **contributing bilingual wordlists and terminology mappings**.
+Our approach reduces the barrier to native-speaker participation. Instead of demanding thousands of annotated bilingual sentence pairs from scarce linguistic experts, our method reduces the requirement for language community participation to **contributing bilingual wordlists and terminology mappings**.
 
-Lexical documentation (e.g., wordlists, bilingual glossaries, Webinary dictionaries, Wiktionary entries, and SIL language lexicons) has historically been the primary, most accessible mechanism through which linguistic field researchers and native language speakers document emerging and under-resourced languages. By decoupling lexical knowledge retrieval from syntactic sentence generation:
+Lexical documentation (e.g., wordlists, bilingual glossaries, Webinary dictionaries, Wiktionary entries, and SIL language lexicons) has historically been the primary, most accessible mechanism through which linguistic field researchers and native language speakers document emerging and under-resourced languages. By separating the lexicon from the translation model:
 1. Native speakers and community contributors need only provide translations for isolated noun phrases, idioms, and specialized terms.
-2. The fine-tuned LLM leverages its pre-trained general linguistic reasoning to handle grammatical morphology, subject-verb concord, tense marking, and discourse structure around the retrieved terms.
-This framework turns hundreds of years of static field-linguistic wordlists into actionable, dynamic machine translation assets.
+2. The fine-tuned translation model handles grammatical morphology, subject-verb concord, tense marking, and discourse structure around the supplied terms, drawing on what it learned in pretraining.
+This framework turns existing field-linguistic wordlists into usable machine translation assets.
 
-### 1.3 Deterministic Controllability and Hallucination Mitigation
-Even state-of-the-art closed and open LLMs (as well as dedicated neural MT systems) frequently hallucinate when translating low-resource languages. They invent plausible-sounding but erroneous vocabulary, substitute loanwords indiscriminately, or omit nuanced technical terms. In mission-critical deployments—such as public health communication, statutory legal texts (e.g., the Universal Declaration of Human Rights), and national finance budgets—such lexical hallucinations present unacceptable real-world risks.
+### 1.3 Terminology Control and Hallucination Mitigation
+Dedicated neural MT systems and general LLMs frequently mistranslate low-resource languages: they invent plausible-sounding but erroneous vocabulary, substitute loanwords indiscriminately, or omit nuanced technical terms. In high-stakes deployments—such as public health communication, statutory legal texts (e.g., the Universal Declaration of Human Rights), and national finance budgets—such lexical errors present real risks.
 
-By formulating translation as an agentic tool-calling trajectory (`input text` → `extract noun phrases` → `tool query` → `grounded lexical context` → `linguistic reasoning` → `final translation`), our model is constrained to adhere to verified reference vocabulary. The model learns to incorporate user-supplied and verified terminology where it fits, and only fall back to parametric knowledge when a term is explicitly marked as absent. This provides deploying organizations with **deterministic terminological control**.
+GLOSS-MT places verified terminology directly in the model's input. Each source chunk's noun phrases are looked up in an offline English–Twi dictionary, and every phrase found is replaced in place by its Twi translation (in angle brackets) before translation. The model is fine-tuned once to keep these terms and translate the sentence around them; phrases absent from the dictionary stay in English and are translated by the model as usual. Deploying organisations thus get **terminological control through the dictionary**: the term a phrase receives is the one the dictionary supplies. The control is learned, not enforced by constrained decoding, so it is measured directly (term adherence and dictionary-edit tests, Section 4 of the benchmark analysis): the fine-tuned models write 79–97% of the supplied terms, and 70–97% of the new terms after every entry is changed.
 
-### 1.4 Zero-Parameter Test-Time Domain Adaptation
-In production environments, deploying institutions frequently require standardized or domain-specific terminology (e.g., ministry-approved budgetary phrasing, legal jurisprudence, medical terms, or dialectal variants). With conventional neural MT models, adapting to a new domain necessitates gathering parallel in-domain sentences and performing expensive fine-tuning.
+### 1.4 Zero-Parameter Test-Time Adaptation
+In production environments, deploying institutions frequently require standardized or domain-specific terminology (e.g., ministry-approved budgetary phrasing, legal terms, medical terms, or dialectal variants). With conventional neural MT models, adapting to a new domain necessitates gathering parallel in-domain sentences and performing expensive fine-tuning.
 
-Our architecture enables **zero-shot, zero-parameter test-time domain adaptation**:
-- When deploying to an unseen target domain, operators simply extract the target domain's noun phrases and augment the external lookup dictionary.
-- The model immediately incorporates the newly supplied vocabulary into its reasoning and translation output without requiring a single gradient step or parameter update.
+GLOSS-MT enables **test-time terminology adaptation without parameter updates**:
+- When deploying to a new domain, operators add or change the domain's terms in the external dictionary.
+- The model incorporates the supplied vocabulary into its translation immediately, without a single gradient step.
 
-We empirically validate this capability by demonstrating that augmenting the lookup dictionary with target-domain terminology yields immediate, measurable improvements across benchmark evaluations (Citizens' Budget, Universal Declaration of Human Rights, Watchtower prose, and traditional Akan Folk-Tales).
+The dictionary-edit (swap) test validates this mechanism: replacing every dictionary entry with a different term changes the output accordingly, with no retraining (Section 4 of the benchmark analysis). Measuring the quality gain from adding curated domain terminology for a new domain is left to future work.
 
-### 1.5 Extending Dictionary Grounding Beyond Tool-Calling LLMs
-Tool calling requires an instruction-tuned LLM. Dedicated translation models, which remain strong and cheap for low-resource languages, take only source text. We therefore also study a **tool-free** variant of GLOSS-MT: the same dictionary is applied before translation by replacing the source's dictionary phrases with their target-language translations in place, and a translation model (NLLB-200 at three sizes, OPUS-MT, MADLAD-400 and TranslateGemma) is fine-tuned to translate these partially pretranslated inputs. This keeps the community-contributed lexicon at the centre of the system while reducing inference to a single encoder-decoder pass (Section 3 of the benchmark analysis).
+### 1.5 Why Dedicated Translation Models
+Dedicated translation models remain strong and inexpensive for low-resource languages: on the nsanku benchmark, the base NLLB-200 models (600M–3.3B) score within about 1 chrF2 of each other (46.71–47.74) and above a prompted 31B general-purpose LLM. They need a single encoder-decoder pass per chunk and run on modest hardware. GLOSS-MT therefore builds on these models (NLLB-200 at three sizes, OPUS-MT and MADLAD-400) and on a translation-specialised LLM (TranslateGemma 4B), fine-tuning each to translate partially pretranslated inputs. This keeps the community-contributed lexicon at the centre of the system while leaving inference as cheap as the base model's (Section 3 of the benchmark analysis).

@@ -716,10 +716,10 @@
     // Shown until /models answers (or if it fails); the server's list replaces it.
     let MODELS = [
       { id: "nllb-3.3b", name: "NLLB-200 3.3B", params: "3.3B", url: "https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b", default: true },
-      { id: "nllb-1.3b", name: "NLLB-200 1.3B", params: "1.3B", url: null },
-      { id: "nllb-600m", name: "NLLB-200 600M", params: "600M", url: null },
-      { id: "translategemma-4b", name: "TranslateGemma 4B", params: "4B", url: null },
-      { id: "opus-mt", name: "OPUS-MT en-tw", params: "75M", url: null }
+      { id: "nllb-1.3b", name: "NLLB-200 1.3B", params: "1.3B", url: "https://huggingface.co/ghanaopenai/gloss-mt-nllb-1.3b" },
+      { id: "nllb-600m", name: "NLLB-200 600M", params: "600M", url: "https://huggingface.co/ghanaopenai/gloss-mt-nllb-600m" },
+      { id: "translategemma-4b", name: "TranslateGemma 4B", params: "4B", url: "https://huggingface.co/ghanaopenai/gloss-mt-translategemma-4b" },
+      { id: "opus-mt", name: "OPUS-MT en-tw", params: "75M", url: "https://huggingface.co/ghanaopenai/gloss-mt-opus-mt-en-tw" }
     ];
     const REPO_URL = "https://github.com/GhanaOpenAI/gloss-mt";
     let currentModel = null;

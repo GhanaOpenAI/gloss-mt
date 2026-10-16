@@ -14,8 +14,8 @@ The default model is loaded at start and stays loaded; the others load on first 
 --max-loaded of them stay in GPU memory (the least recently used is unloaded first). All models
 share one dictionary and one GPU lock.
 
-  python -m twi_translate.seq2seq_server --port 8000 \\
-      --path nllb-1.3b=checkpoints/nllb-1.3b-twi/final --path opus-mt=checkpoints/opus-mt-en-tw-twi/final
+  python -m twi_translate.seq2seq_server --port 8000
+  python -m twi_translate.seq2seq_server --models nllb-3.3b,opus-mt --path opus-mt=checkpoints/opus-mt-en-tw-twi/final
 """
 
 import argparse
@@ -32,20 +32,21 @@ from .seq2seq import GLOSSARY_DICT, ChunkedTranslator, chunk_text, glossary_for,
 _PARAGRAPHS = re.compile(r"(\n\s*\n)")
 NOT_FOUND = "Not found (translate from your own knowledge): "
 
-# id -> name, size, default path (HF repo or local directory), Hugging Face page, backend.
+# id -> name, size, Hugging Face repo (--path ID=DIR loads a local copy instead), page, backend.
 # TranslateGemma's path is its LoRA adapter on google/translategemma-4b-it.
 MODELS: Dict[str, Dict] = {
     "nllb-3.3b": {"name": "NLLB-200 3.3B", "params": "3.3B", "path": "ghanaopenai/gloss-mt-nllb-3.3b",
                   "url": "https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b", "backend": "seq2seq"},
     "nllb-1.3b": {"name": "NLLB-200 1.3B", "params": "1.3B", "path": "ghanaopenai/gloss-mt-nllb-1.3b",
-                  "url": None, "backend": "seq2seq"},
+                  "url": "https://huggingface.co/ghanaopenai/gloss-mt-nllb-1.3b", "backend": "seq2seq"},
     "nllb-600m": {"name": "NLLB-200 600M", "params": "600M", "path": "ghanaopenai/gloss-mt-nllb-600m",
-                  "url": None, "backend": "seq2seq"},
+                  "url": "https://huggingface.co/ghanaopenai/gloss-mt-nllb-600m", "backend": "seq2seq"},
     "translategemma-4b": {"name": "TranslateGemma 4B", "params": "4B",
-                          "path": "ghanaopenai/gloss-mt-translategemma-4b", "url": None,
+                          "path": "ghanaopenai/gloss-mt-translategemma-4b",
+                          "url": "https://huggingface.co/ghanaopenai/gloss-mt-translategemma-4b",
                           "backend": "translategemma"},
     "opus-mt": {"name": "OPUS-MT en-tw", "params": "75M", "path": "ghanaopenai/gloss-mt-opus-mt-en-tw",
-                "url": None, "backend": "seq2seq"},
+                "url": "https://huggingface.co/ghanaopenai/gloss-mt-opus-mt-en-tw", "backend": "seq2seq"},
 }
 DEFAULT_MODEL = "nllb-3.3b"
 TRANSLATEGEMMA_BASE = "google/translategemma-4b-it"
