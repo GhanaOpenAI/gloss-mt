@@ -46,11 +46,10 @@ Because **75 out of 84 documents (89.3%)** belong to a single historical storyte
 | **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 | 84 |
 | **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 | 84 |
 | **NLLB-200 600M** | Distilled Open MT | 600M | **46.71** | 12.74 | 44.10 | 50.17 | 57.06 | 35.50 | 84 |
-| **Gemma 4 31B Base** | Foundation LLM | 31B | **45.55** | 11.93 | 45.97 | 41.97 | 57.57 | 36.71 | 84 |
 | **OPUS-MT en-tw** | Dedicated Open MT | 75M | **42.52** | 9.71 | 37.78 | 47.52 | 54.23 | 30.53 | 84 |
 | **MADLAD-400 3B** | Dedicated Open MT | 3B | **37.14** | 6.71 | 37.43 | 36.60 | 50.66 | 23.87 | 84 |
 
-Gemma 4 31B (prompted, no fine-tuning) is kept as a general-purpose LLM reference; the systems studied are dedicated translation models and a translation-specialised LLM.
+The systems studied are dedicated translation models and a translation-specialised LLM, each compared with its pretrained base; Gemini 3.8 Flash, Google Translate and Khaya AI are commercial references.
 
 ### 2.1 Orthographic and Diachronic Divergence of the Folk-Tales
 The Rattray (1930) corpus uses pre-standardization colonial Gold Coast orthography with archaic phonological transcriptions, dialectal Asante idioms, and non-standardized morpheme segmentations. 
