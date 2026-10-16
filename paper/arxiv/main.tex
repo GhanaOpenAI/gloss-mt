@@ -77,10 +77,9 @@ Terminology can be imposed at decoding time with lexically constrained beam sear
 \toprule
 & System & chrF2 & BLEU & Finance & UDHR & Watchtower & Folktales \\
 \midrule
-\multirow{3}{*}{References}
+\multirow{2}{*}{References}
 & Gemini 3.8 Flash & 54.64 & 17.25 & 52.50 & 56.44 & 69.28 & 40.33 \\
 & Google Translate & 51.26 & 15.67 & 48.06 & 52.30 & 67.15 & 37.54 \\
-& Khaya AI & 49.91 & 12.79 & 47.74 & 49.92 & 65.78 & 36.22 \\
 \midrule
 \multirow{2}{*}{NLLB-200 3.3B} & base & 47.74 & \textbf{14.15} & 45.25 & \textbf{52.05} & 56.89 & 36.76 \\
 & \gm{} & \textbf{50.80} \small(+3.06) & 13.11 & \textbf{50.23} & 51.66 & \textbf{64.17} & \textbf{37.16} \\
@@ -103,7 +102,7 @@ TranslateGemma 4B & \gm{} & 49.81 & 12.24 & 50.03 & 51.19 & 62.54 & 35.48 \\
 
 \section{Results}
 
-\paragraph{No degradation in chrF2.} Table~\ref{tab:bench} shows that every fine-tune scores above its pretrained base in chrF2, by +2.85 to +5.48. The gain concentrates in contemporary prose: Watchtower rises by 5.7--7.3 points for the NLLB models and Finance by 3.7--5.7. The only domain below its base is the UDHR for NLLB 3.3B ($-0.39$). The 1930 folktales, written in pre-standard orthography, gain least. The three NLLB fine-tunes are the best open systems, above Khaya AI and behind only Gemini 3.8 Flash and Google Translate. OPUS-MT gains most (+5.48) and, at 75M parameters, scores above the base NLLB 3.3B (48.00 vs 47.74).
+\paragraph{No degradation in chrF2.} Table~\ref{tab:bench} shows that every fine-tune scores above its pretrained base in chrF2, by +2.85 to +5.48. The gain concentrates in contemporary prose: Watchtower rises by 5.7--7.3 points for the NLLB models and Finance by 3.7--5.7. The only domain below its base is the UDHR for NLLB 3.3B ($-0.39$). The 1930 folktales, written in pre-standard orthography, gain least. The three NLLB fine-tunes are the best open systems, behind only the commercial Gemini 3.8 Flash and Google Translate. OPUS-MT gains most (+5.48) and, at 75M parameters, scores above the base NLLB 3.3B (48.00 vs 47.74).
 
 \paragraph{Model size matters little once fine-tuned.} The fine-tuned NLLB models span only 50.12--50.80 from 600M to 3.3B, and the 600M fine-tune scores 2.38 above the base 3.3B model, so the cheapest model is a practical deployment choice.
 
