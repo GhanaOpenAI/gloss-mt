@@ -31,6 +31,7 @@ from .lookup import DEFAULT_PATH, TwiLookup
 # twi_dictionary.tsv.gz stays the default of the Gemma tool-calling runtime.
 GLOSSARY_DICT = os.path.join(os.path.dirname(DEFAULT_PATH), "twi_dictionary_single.tsv.gz")
 TRANSLATE_PREFIX = "translate English to Twi: "
+MADLAD_PREFIX = "<2ak> "  # MADLAD-400 picks the target language with a "<2xx>" token; Twi is Akan
 
 _SPLIT = re.compile(r"(\n\s*)")
 _NL_SPACES = re.compile(r" *\n *")
@@ -54,9 +55,17 @@ def nllb_langs(tok) -> Optional[Tuple[str, str]]:
     return ("eng_Latn", "twi_Latn") if "nllb" in type(tok).__name__.lower() else None
 
 
+def is_madlad(tok) -> bool:
+    """True for MADLAD-400's tokenizer, the only one here with "<2xx>" target-language tokens."""
+    return tok.convert_tokens_to_ids("<2ak>") not in (None, tok.unk_token_id)
+
+
 def task_prefix(tok) -> str:
-    """The text prefix the model's inputs start with: umT5 (a T5 tokenizer) is told the task in
-    text; NLLB takes language codes and an OPUS-MT (Marian) model is a single language pair."""
+    """The text prefix the model's inputs start with: MADLAD-400 takes a target-language token,
+    umT5 (another T5 tokenizer) is told the task in text; NLLB takes language codes and an
+    OPUS-MT (Marian) model is a single language pair."""
+    if is_madlad(tok):
+        return MADLAD_PREFIX
     return TRANSLATE_PREFIX if "t5" in type(tok).__name__.lower() else ""
 
 

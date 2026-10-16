@@ -26,13 +26,16 @@ def main():
     models_order = [
         "Google/gemini-3.8-flash",
         "Google/google-translate-free",
-        "KhayaAI/khaya-translate",
-        "ghanaopenai/gloss-mt",
         "ghanaopenai/gloss-mt-nllb-3.3b",
+        "KhayaAI/khaya-translate",
+        "ghanaopenai/gloss-mt-translategemma-4b",
+        "ghanaopenai/gloss-mt",
+        "ghanaopenai/gloss-mt-opus-mt-en-tw",
         "facebook/nllb-200-3.3B",
         "facebook/nllb-200-1.3B",
         "facebook/nllb-200-distilled-600M",
         "google/gemma-4-31B-it",
+        "Helsinki-NLP/opus-mt-en-tw",
         "google/madlad400-3b-mt",
         "google/gemma-4-E4B-it",
     ]
@@ -193,6 +196,10 @@ def main():
         "   - **+2.04 chrF2** over the base NLLB-200 3.3B (`49.78` vs `47.74`), and level with the tool-calling GLOSS-MT Gemma 4 E4B (`49.75`) with **+2.48 BLEU** (`13.93` vs `11.45`), from one beam-search pass per chunk with no reasoning trace or tool loop.",
         "   - Largest gain on Watchtower: **`65.55`** vs `56.89` for base NLLB-200 3.3B (+8.66) and `60.75` for GLOSS-MT Gemma 4 E4B (+4.80).",
         "   - Finance `46.97` (+1.72 over base NLLB-200 3.3B, −4.26 below GLOSS-MT Gemma 4 E4B); UDHR `50.46` (−1.59 vs base NLLB-200 3.3B); Folktales `36.16` (−0.60).",
+        "",
+        "5. **The Same Pipeline on TranslateGemma 4B and OPUS-MT en-tw:**",
+        "   - **GLOSS-MT (TranslateGemma 4B + Glossary)**, a LoRA fine-tune of TranslateGemma 4B on the same data, scores **49.81 chrF2 / 12.24 BLEU** (length ratio 1.06): −0.99 chrF2 below GLOSS-MT NLLB 3.3B on the benchmark although it led on validation (BLEU 33.73 vs 31.73).",
+        "   - **GLOSS-MT (OPUS-MT en-tw + Glossary)**, a full fine-tune of the ~75M-parameter Marian model, scores **48.00 chrF2 / 10.91 BLEU**: **+5.48 chrF2** over the base OPUS-MT en-tw (`42.52`), with gains in every domain, and above base NLLB-200 3.3B on chrF2 (`47.74`).",
     ])
 
     md_path = os.path.join(RESULTS_DIR, "benchmark_comparison.md")

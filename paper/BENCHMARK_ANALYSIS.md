@@ -36,11 +36,14 @@ On contemporary standard texts, **GLOSS-MT consistently outperforms the base 4B 
 | **Google Translate** | Commercial API | Cloud | **51.26** | 15.67 | 48.06 | 52.30 | 67.15 | 37.54 | 84 |
 | **GLOSS-MT NLLB (Ours)** | **Open MT + Dictionary Pretranslation** | **3.3B** | **50.80** | **13.11** | **50.23** | **51.66** | **64.17** | **37.16** | 84 |
 | **Khaya AI** | Commercial API | Cloud | **49.92** | 12.79 | 47.74 | 49.92 | 65.78 | 36.22 | 84 |
+| **GLOSS-MT TranslateGemma (Ours)** | **Translation LLM + Dictionary Pretranslation** | **4B** | **49.81** | **12.24** | **50.03** | **51.19** | **62.54** | **35.48** | 84 |
 | **GLOSS-MT (Ours)** | **LLM + Offline Tool** | **4B** | **49.75** | **11.45** | **51.23** | **50.80** | **60.75** | **36.23** | 84 |
+| **GLOSS-MT OPUS-MT (Ours)** | **Open MT + Dictionary Pretranslation** | **75M** | **48.00** | **10.91** | **46.13** | **50.09** | **60.62** | **35.15** | 84 |
 | **NLLB-200 3.3B** | Dedicated Open MT | 3.3B | **47.74** | 14.15 | 45.25 | 52.05 | 56.89 | 36.76 | 84 |
 | **NLLB-200 1.3B** | Dedicated Open MT | 1.3B | **47.42** | 13.68 | 45.72 | 50.47 | 57.46 | 36.05 | 84 |
 | **NLLB-200 600M** | Distilled Open MT | 600M | **46.71** | 12.74 | 44.10 | 50.17 | 57.06 | 35.50 | 84 |
 | **Gemma 4 31B Base** | Foundation LLM | 31B | **45.55** | 11.93 | 45.97 | 41.97 | 57.57 | 36.71 | 84 |
+| **OPUS-MT en-tw** | Dedicated Open MT | 75M | **42.52** | 9.71 | 37.78 | 47.52 | 54.23 | 30.53 | 84 |
 | **MADLAD-400 3B** | Dedicated Open MT | 3B | **37.14** | 6.71 | 37.43 | 36.60 | 50.66 | 23.87 | 84 |
 | **Gemma 4 E4B Base** | Foundation LLM | 4B | **12.21** | 0.94 | 8.18 | 3.84 | 21.86 | 14.96 | 84 |
 
@@ -116,5 +119,24 @@ The chunked, pretranslated data is released as [`ghanaopenai/gloss-mt-parallel-e
 ### 5.4 Qualitative Note: Table-of-Contents Dot Leaders
 The Citizens' Budget documents open with tables of contents (*"CONCLUSION ......... 23"*). The fine-tuned model, which saw no dot leaders in training, looped on them and emitted roughly ten times the source's dots (16,302 vs 1,695 characters on the 2021 budget), occasionally followed by invented text. The pipeline now keeps dot leaders and page references out of the model and restores them unchanged. On the 2021 budget this raised chrF2 from 45.63 to 47.82 and BLEU from 9.37 to 17.57. All reported numbers use this pipeline.
 
-### 5.5 Next: TranslateGemma
-The same chunked, pretranslated data is being used to fine-tune TranslateGemma 4B (LoRA), a translation-specialised LLM. Zero-shot, TranslateGemma has no Twi code and answered with non-Twi text (chrF2 4.15 on the GLOSS-MT test split), so its results will show how far the pipeline can adapt a translation LLM to a language it does not support.
+### 5.5 Other Base Models: TranslateGemma 4B and OPUS-MT en-tw
+The same data and pipeline were used with two more base models:
+- **TranslateGemma 4B** (translation-specialised Gemma 3 LLM), LoRA r=32 (60M trainable parameters). It has no Twi code, so the target is Akan (`ak`); zero-shot it answered with non-Twi text (chrF2 4.15 on the GLOSS-MT test split). Training was stopped after step 5,000 and the best checkpoint (step 3,000, ~3 epochs) kept: on the same 200 validation chunks it reached BLEU 33.73 / chrF2 64.96, above GLOSS-MT NLLB 3.3B (31.73 / 63.66). Decoding is greedy.
+- **OPUS-MT en-tw** (Helsinki-NLP MarianMT, ~75M parameters), full fine-tune. Its length limit is 512 tokens, so chunks are split at line boundaries into pieces that fit (27,596 training pieces from 31,909 chunks), and inference chunks are 128 source tokens. It trained for the full 30 epochs; the best checkpoint (step 23,000) reached BLEU 27.67 / chrF2 60.87 on 200 validation pieces (not the same set as above), with the score flat over the last ~10 epochs.
+
+| Domain / Corpus | Documents | GLOSS-MT NLLB 3.3B | GLOSS-MT TranslateGemma 4B | OPUS-MT en-tw (base) | GLOSS-MT OPUS-MT | Gain vs base OPUS-MT |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Citizens' Budget (Finance)** | 3 | **50.23** | 50.03 | 37.78 | 46.13 | +8.35 |
+| **UDHR (Human Rights / Legal)** | 1 | **51.66** | 51.19 | 47.52 | 50.09 | +2.57 |
+| **Watchtower (JW / Religious Prose)** | 5 | **64.17** | 62.54 | 54.23 | 60.62 | +6.39 |
+| **Akan Folk-Tales (Rattray, 1930)** | 75 | **37.16** | 35.48 | 30.53 | 35.15 | +4.62 |
+| **Mean of datasets (chrF2)** | 84 | **50.80** | 49.81 | 42.52 | 48.00 | **+5.48** |
+| **BLEU** | 84 | **13.11** | 12.24 | 9.71 | 10.91 | +1.20 |
+| **Length ratio** | 84 | **1.00** | 1.06 | 0.86 | 0.97 | |
+
+- **Validation lead does not transfer.** TranslateGemma beat NLLB 3.3B on validation but trails it by −0.99 chrF2 on the benchmark, in every domain. Its output runs long (length ratio 1.06; 1.55 on Folk-Tales), which the benchmark's document-level scoring penalises.
+- **Large gain for a small model.** The pipeline raises OPUS-MT by +5.48 chrF2, most on Finance (+8.35), and the 75M-parameter fine-tune scores above the base NLLB-200 3.3B on chrF2 (48.00 vs 47.74), though not on BLEU.
+- **Capacity still matters.** With the same data and dictionary, the ranking follows model size among dedicated MT models: NLLB 3.3B (50.80) > OPUS-MT 75M (48.00).
+
+### 5.6 Next: NLLB-200 1.3B, NLLB-200 600M and MADLAD-400 3B
+The same recipe is being applied to NLLB-200 1.3B and NLLB-200 distilled 600M (full fine-tunes) and MADLAD-400 3B (LoRA r=32, target token `<2ak>`), to measure how the pipeline's gain scales with model size within one model family and on a third architecture.
