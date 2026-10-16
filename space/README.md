@@ -5,16 +5,16 @@ colorFrom: blue
 colorTo: green
 sdk: static
 pinned: false
-short_description: English to Twi translator, NLLB-200 3.3B + dictionary
+short_description: English to Twi translator, GLOSS-MT models + dictionary
 ---
 
 # GLOSS-MT (Akan / Asante Twi)
 
-Google Translate-style interface for English-to-Twi translation powered by NLLB-200 3.3B fine-tuned with an offline English–Twi dictionary: key phrases are looked up and pretranslated in place, then the model translates the text (served on an NVIDIA H200).
+Google Translate-style interface for English-to-Twi translation with the GLOSS-MT models, translation models fine-tuned with an offline English–Twi dictionary: key phrases are looked up and pretranslated in place, then the model translates the text (served on an NVIDIA H200). A menu switches between the models: NLLB-200 3.3B (default), NLLB-200 1.3B, NLLB-200 600M, TranslateGemma 4B and OPUS-MT en-tw.
 
 **Author:** [Ghana Open AI](https://huggingface.co/ghanaopenai)  
 **Supported by:** [Ghana NLP](https://ghananlp.org)  
-**Model:** [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b) (the tool-calling Gemma 4 E4B version is [`ghanaopenai/gloss-mt`](https://huggingface.co/ghanaopenai/gloss-mt))  
+**Default model:** [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b)  
 **Code:** [`GhanaOpenAI/gloss-mt`](https://github.com/GhanaOpenAI/gloss-mt)
 
 ### 💡 Best Practice & Input Scope

@@ -367,6 +367,45 @@
       color: var(--text-secondary);
     }
 
+    /* Model selector */
+    .model-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .model-bar label {
+      font-family: 'Google Sans', sans-serif;
+      font-weight: 500;
+      color: #3c4043;
+    }
+
+    .model-select {
+      font-family: 'Google Sans', sans-serif;
+      font-size: 14px;
+      color: var(--text);
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      cursor: pointer;
+      max-width: 100%;
+    }
+
+    .model-select:focus {
+      outline: none;
+      border-color: var(--border-focus);
+    }
+
+    .model-note a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
     /* Samples Tray */
     .samples-tray {
       display: flex;
@@ -546,7 +585,7 @@
       <div class="brand-logo">G</div>
       <div class="brand-title">
         GLOSS-MT
-        <span class="brand-badge">Akan · NLLB-200 3.3B</span>
+        <span class="brand-badge" id="brandBadge">Akan · NLLB-200 3.3B</span>
       </div>
     </a>
     <div class="header-meta">
@@ -554,11 +593,18 @@
       <span>•</span>
       <span><strong>Supported by:</strong> <a href="https://ghananlp.org" target="_blank">Ghana NLP</a></span>
       <span>•</span>
-      <span><a href="https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b" target="_blank">Model Card</a></span>
+      <span><a href="https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b" target="_blank" id="modelCardLink">Model Card</a></span>
     </div>
   </header>
 
   <main>
+    <!-- Model selector -->
+    <div class="model-bar">
+      <label for="modelSelect">Model</label>
+      <select class="model-select" id="modelSelect" onchange="onModelChange()"></select>
+      <span class="model-note" id="modelNote"></span>
+    </div>
+
     <!-- Samples Tray -->
     <div class="samples-tray">
       <span style="font-size: 12px; font-weight: 500; color: var(--text-secondary);">Examples:</span>
@@ -653,7 +699,7 @@
 
   <footer>
     <p>
-      <strong>GLOSS-MT</strong> — <a href="https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b" target="_blank">NLLB-200 3.3B</a> fine-tuned with an offline English–Twi dictionary by 
+      <strong>GLOSS-MT</strong> — translation models (NLLB-200, TranslateGemma, OPUS-MT) fine-tuned with an offline English–Twi dictionary by 
       <a href="https://huggingface.co/ghanaopenai" target="_blank">Ghana Open AI</a> with support from 
       <a href="https://ghananlp.org" target="_blank">Ghana NLP</a>.
       Available on <a href="https://github.com/GhanaOpenAI/gloss-mt" target="_blank">GitHub</a> and 
@@ -667,6 +713,16 @@
     const API_BASE = "https://ghana-chat.ghanaopenai.org";
     // Markdown examples: the output box renders the translation's markdown
     const SAMPLES = ["## Community Health Notice\n\nThe district health directorate will hold a free screening exercise next week.\n\n- **Date:** Monday, 12 May\n- **Venue:** Kumasi Central Market\n- **Services:** blood pressure checks, malaria testing and eye care\n\nAll residents are encouraged to attend.", "### 2024 Budget Allocations\n\n| Sector | Amount (GH₵ million) | Main focus |\n|---|---|---|\n| Education | 1,250 | Free senior high school |\n| Health | 980 | Rural clinics and nurses |\n| Agriculture | 640 | Fertiliser for farmers |\n\nThe government says these sectors will receive priority this year.", "# How to Register Your Farm\n\n1. Visit the nearest district agriculture office.\n2. Bring your **Ghana Card** and a photograph of your farm.\n3. Fill in the registration form and submit it to the officer.\n\n*Registered farmers will receive subsidised seeds and fertiliser.*", "## Article 1\n\n> All human beings are born free and equal in dignity and rights.\n\nThey are endowed with reason and conscience and should act towards one another in a spirit of brotherhood."];
+    // Shown until /models answers (or if it fails); the server's list replaces it.
+    let MODELS = [
+      { id: "nllb-3.3b", name: "NLLB-200 3.3B", params: "3.3B", url: "https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b", default: true },
+      { id: "nllb-1.3b", name: "NLLB-200 1.3B", params: "1.3B", url: null },
+      { id: "nllb-600m", name: "NLLB-200 600M", params: "600M", url: null },
+      { id: "translategemma-4b", name: "TranslateGemma 4B", params: "4B", url: null },
+      { id: "opus-mt", name: "OPUS-MT en-tw", params: "75M", url: null }
+    ];
+    const REPO_URL = "https://github.com/GhanaOpenAI/gloss-mt";
+    let currentModel = null;
     let isTranslating = false;
     let rawTranslation = "";
     let abortController = null;
@@ -681,6 +737,63 @@
     const inspectContent = document.getElementById('inspectContent');
     const inspectToggleBtn = document.getElementById('inspectToggleBtn');
     const inspectSummary = document.getElementById('inspectSummary');
+    const modelSelect = document.getElementById('modelSelect');
+    const modelNote = document.getElementById('modelNote');
+    const brandBadge = document.getElementById('brandBadge');
+    const modelCardLink = document.getElementById('modelCardLink');
+
+    function savedModel() {
+      try { return localStorage.getItem('glossmt-model'); } catch (e) { return null; }
+    }
+
+    function saveModel(id) {
+      try { localStorage.setItem('glossmt-model', id); } catch (e) { /* storage unavailable */ }
+    }
+
+    function modelInfo(id) {
+      return MODELS.find(m => m.id === id) || MODELS[0];
+    }
+
+    function renderModels() {
+      const keep = currentModel || savedModel();
+      const fallback = (MODELS.find(m => m.default) || MODELS[0]).id;
+      currentModel = MODELS.some(m => m.id === keep) ? keep : fallback;
+      modelSelect.innerHTML = MODELS.map(m =>
+        `<option value="${escapeHtml(m.id)}">GLOSS-MT · ${escapeHtml(m.name)} (${escapeHtml(m.params)})</option>`).join('');
+      modelSelect.value = currentModel;
+      showModel();
+    }
+
+    function showModel() {
+      const m = modelInfo(currentModel);
+      brandBadge.textContent = `Akan · ${m.name}`;
+      modelCardLink.href = m.url || REPO_URL;
+      modelCardLink.textContent = m.url ? 'Model Card' : 'Code';
+      modelNote.innerHTML = m.loaded === false
+        ? 'Loaded on first use, so the first translation takes longer.'
+        : (m.url ? `<a href="${m.url}" target="_blank">${escapeHtml(m.url.replace('https://huggingface.co/', ''))}</a>` : '');
+    }
+
+    function onModelChange() {
+      currentModel = modelSelect.value;
+      saveModel(currentModel);
+      showModel();
+      if (inputArea.value.trim() && rawTranslation) startTranslation();
+    }
+
+    async function loadModels() {
+      try {
+        const r = await fetch(`${API_BASE}/models`);
+        if (!r.ok) return;
+        const list = await r.json();
+        if (Array.isArray(list) && list.length) {
+          MODELS = list;
+          renderModels();
+        }
+      } catch (e) {
+        console.log("Model list unavailable; using the built-in list.", e);
+      }
+    }
 
     inputArea.addEventListener('input', () => {
       charCount.textContent = `${inputArea.value.length} characters`;
@@ -812,7 +925,7 @@
         const response = await fetch(`${API_BASE}/translate/stream`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: text }),
+          body: JSON.stringify({ text: text, model: currentModel }),
           signal: abortController.signal
         });
 
@@ -844,6 +957,8 @@
               if (event.type === 'status') {
                 if (event.stage === 'analyzing') {
                   setStatus('analyzing', 'Looking up terms...');
+                } else if (event.stage === 'loading') {
+                  setStatus('analyzing', `Loading ${modelInfo(currentModel).name}...`);
                 } else if (event.stage === 'generating') {
                   setStatus('translating', 'Translating...');
                 }
@@ -861,6 +976,8 @@
                 outCount.textContent = `${currentTranslation.length} characters`;
                 if (event.lookups) renderLookups(event.lookups);
                 setStatus('done', 'Complete');
+                const m = modelInfo(currentModel);
+                if (m.loaded === false) { m.loaded = true; showModel(); }
               }
             } catch (err) {
               console.error("Failed to parse SSE line:", dataStr, err);
@@ -882,6 +999,9 @@
         if (cursor) cursor.remove();
       }
     }
+
+    renderModels();
+    loadModels();
   </script>
 </body>
 </html>
