@@ -1,0 +1,41 @@
+{
+ "metrics": {
+  "chunks": 300,
+  "inserted_terms": 2766,
+  "adherence": 66.02,
+  "natural_rate": 33.88,
+  "control_gain": 32.14,
+  "adherence_by_term_length": {
+   "1 word": {
+    "terms": 2485,
+    "adherence": 66.12
+   },
+   "2+ words": {
+    "terms": 281,
+    "adherence": 65.12
+   }
+  },
+  "swapped_terms": 2766,
+  "swap_adherence": 72.02,
+  "swap_leak": 2.82,
+  "dict_bleu": 10.07,
+  "dict_chrf2": 38.94,
+  "none_bleu": 12.27,
+  "none_chrf2": 39.58,
+  "swap_vs_dict_chrf2": 51.21
+ },
+ "args": {
+  "backend": "seq2seq",
+  "model": "facebook/nllb-200-3.3B",
+  "adapter": null,
+  "name": "bible-nllb-200-3.3b-base",
+  "data": "ghanaopenai/gloss-mt-parallel-en-twi",
+  "jsonl": "/mnt/volume_d2wey28/projects/twi-translation-tool-calling/repo/build/bible/asante_gnt_300.jsonl",
+  "n": 300,
+  "num_beams": 4,
+  "batch_size": 8,
+  "device": null,
+  "seed": 0
+ },
+ "note": "examples omitted: Bible text (YouVersion) is not redistributed"
+}

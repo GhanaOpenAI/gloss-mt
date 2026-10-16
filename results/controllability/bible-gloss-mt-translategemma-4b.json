@@ -1,0 +1,41 @@
+{
+ "metrics": {
+  "chunks": 300,
+  "inserted_terms": 2766,
+  "adherence": 96.6,
+  "natural_rate": 26.17,
+  "control_gain": 70.43,
+  "adherence_by_term_length": {
+   "1 word": {
+    "terms": 2485,
+    "adherence": 96.58
+   },
+   "2+ words": {
+    "terms": 281,
+    "adherence": 96.8
+   }
+  },
+  "swapped_terms": 2766,
+  "swap_adherence": 97.25,
+  "swap_leak": 1.92,
+  "dict_bleu": 6.36,
+  "dict_chrf2": 37.15,
+  "none_bleu": 4.69,
+  "none_chrf2": 32.13,
+  "swap_vs_dict_chrf2": 48.22
+ },
+ "args": {
+  "backend": "translategemma",
+  "model": "google/translategemma-4b-it",
+  "adapter": "/mnt/volume_d2wey28/projects/twi-translation-tool-calling/checkpoints/translategemma-4b-twi/adapter",
+  "name": "bible-gloss-mt-translategemma-4b",
+  "data": "ghanaopenai/gloss-mt-parallel-en-twi",
+  "jsonl": "/mnt/volume_d2wey28/projects/twi-translation-tool-calling/repo/build/bible/asante_gnt_300.jsonl",
+  "n": 300,
+  "num_beams": 4,
+  "batch_size": 4,
+  "device": null,
+  "seed": 0
+ },
+ "note": "examples omitted: Bible text (YouVersion) is not redistributed"
+}

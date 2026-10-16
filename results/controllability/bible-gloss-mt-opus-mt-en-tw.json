@@ -1,0 +1,41 @@
+{
+ "metrics": {
+  "chunks": 300,
+  "inserted_terms": 2766,
+  "adherence": 79.21,
+  "natural_rate": 32.54,
+  "control_gain": 46.67,
+  "adherence_by_term_length": {
+   "1 word": {
+    "terms": 2485,
+    "adherence": 79.72
+   },
+   "2+ words": {
+    "terms": 281,
+    "adherence": 74.73
+   }
+  },
+  "swapped_terms": 2766,
+  "swap_adherence": 69.74,
+  "swap_leak": 1.74,
+  "dict_bleu": 6.55,
+  "dict_chrf2": 36.37,
+  "none_bleu": 5.92,
+  "none_chrf2": 33.56,
+  "swap_vs_dict_chrf2": 48.76
+ },
+ "args": {
+  "backend": "seq2seq",
+  "model": "/mnt/volume_d2wey28/projects/twi-translation-tool-calling/checkpoints/opus-mt-en-tw-twi/final",
+  "adapter": null,
+  "name": "bible-gloss-mt-opus-mt-en-tw",
+  "data": "ghanaopenai/gloss-mt-parallel-en-twi",
+  "jsonl": "build/bible/asante_gnt_300.jsonl",
+  "n": 300,
+  "num_beams": 4,
+  "batch_size": 16,
+  "device": "cpu",
+  "seed": 0
+ },
+ "note": "examples omitted: Bible text (YouVersion) is not redistributed"
+}
