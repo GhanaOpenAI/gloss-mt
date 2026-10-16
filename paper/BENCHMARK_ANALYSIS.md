@@ -1,5 +1,21 @@
 # Empirical Evaluation and Domain-Specific Analysis
 
+> **Research question.** Can we add controllability to machine translation, and reduce the burden of fine-tuning, without degrading the performance of pretrained MT models? (See the Central Research Question in `PREAMBLE.md`.)
+
+**Evidence so far (English → Asante Twi, nsanku-mt-benchmark, chrF2):**
+
+| Pretrained base | Base | GLOSS-MT fine-tune | Change | Fine-tune |
+|---|:---:|:---:|:---:|---|
+| NLLB-200 3.3B | 47.74 | 50.80 | **+3.06** | LoRA r=32 (2% of parameters), best at ~13 epochs |
+| OPUS-MT en-tw (75M) | 42.52 | 48.00 | **+5.48** | full fine-tune |
+| TranslateGemma 4B | no Twi output zero-shot | 49.81 | n/a | LoRA r=32, best at ~3 epochs |
+| Gemma 4 E4B (tool calling) | 12.21 | 49.75 | +37.54 | LoRA (tool-calling SFT) |
+| NLLB-200 1.3B, 600M; MADLAD-400 3B | 47.42, 46.71, 37.14 | in training | | |
+
+- **No degradation (so far):** every fine-tuned model scores above its pretrained base on chrF2. Two exceptions to watch: GLOSS-MT NLLB 3.3B is −1.04 BLEU and −0.39 chrF2 on the UDHR below base NLLB-200 3.3B.
+- **Fine-tuning burden:** the fine-tune is done once, on a light budget; it is not repeated per domain.
+- **Controllability is not yet measured directly.** The dictionary terms currently act as hints, not constraints (Section 5.3): the model sometimes keeps an English name or prefers its own synonym. A direct test is still needed: the share of pretranslated terms that appear in the output, and whether editing a dictionary entry changes the output accordingly, without retraining.
+
 ## 1. Disaggregating Macro Metrics: Addressing the Aggregation Fallacy
 
 When evaluating generative language models and tool-calling translation systems across heterogeneous corpora, simple document-level unweighted macro averages can obscure critical qualitative differences across domains. 
