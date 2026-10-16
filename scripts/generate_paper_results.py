@@ -27,9 +27,10 @@ def main():
         "Google/gemini-3.8-flash",
         "Google/google-translate-free",
         "ghanaopenai/gloss-mt-nllb-3.3b",
+        "ghanaopenai/gloss-mt-nllb-1.3b",
+        "ghanaopenai/gloss-mt-nllb-600m",
         "KhayaAI/khaya-translate",
         "ghanaopenai/gloss-mt-translategemma-4b",
-        "ghanaopenai/gloss-mt",
         "ghanaopenai/gloss-mt-opus-mt-en-tw",
         "facebook/nllb-200-3.3B",
         "facebook/nllb-200-1.3B",
@@ -37,7 +38,6 @@ def main():
         "google/gemma-4-31B-it",
         "Helsinki-NLP/opus-mt-en-tw",
         "google/madlad400-3b-mt",
-        "google/gemma-4-E4B-it",
     ]
 
     models_data = {}

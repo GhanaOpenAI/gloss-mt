@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "twi-translate"
 version = "0.1.0"
-description = "English->Twi translation with a tool-calling LLM backed by the SHOLA Gemini lookup table"
+description = "GLOSS-MT: English->Twi translation with an editable dictionary pretranslated into the source"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "CC-BY-NC-4.0" }

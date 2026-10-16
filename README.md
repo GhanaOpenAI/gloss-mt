@@ -1,148 +1,167 @@
-# Twi translation with tool calling + reasoning
+# GLOSS-MT: English → Twi translation with an editable dictionary
 
-Teach an LLM to translate English into Twi (Akan) like a careful translator:
+GLOSS-MT adds an external, editable dictionary to pretrained translation models. Before a text is
+translated, its English noun phrases are looked up in an offline English → Twi dictionary, and
+every phrase found is replaced **in place** by its Twi translation. The model, fine-tuned once to
+use these terms, translates the rest of the sentence around them. Terminology can then be changed
+by editing the dictionary, without new parallel data or retraining.
 
-1. **look up** the key English noun phrases with a `lookup_twi_translation` tool call,
-2. **read** the dictionary results (phrases that aren't found come back empty),
-3. **reason** about grammar, idioms and word choice, using the dictionary terms where they fit,
-4. **translate**.
-
-This repo contains all of it: the code that builds the dataset, the offline dictionary the tool
-uses, the fine-tuning and merging scripts, an evaluation script, and the **deployment runtime**
-that runs a fine-tuned model end to end. The runtime parses the tool call, does the lookup, feeds
-the results back and returns the translation.
+The same recipe is applied to dedicated translation models (NLLB-200 at three sizes, OPUS-MT,
+MADLAD-400) and a translation-specialised LLM (TranslateGemma 4B), and each is compared with its
+own pretrained base.
 
 | Artifact | Where |
 |---|---|
-| Dataset | [`ghanaopenai/twi-translation-tool-calling`](https://huggingface.co/datasets/ghanaopenai/twi-translation-tool-calling) |
-| Fine-tuned Model | [`ghanaopenai/gloss-mt`](https://huggingface.co/ghanaopenai/gloss-mt) |
-| Live Demo (Space) | [`ghanaopenai/gloss-mt`](https://huggingface.co/spaces/ghanaopenai/gloss-mt) |
-| Base model | `google/gemma-4-E4B-it` (4B parameter compact model, LoRA on language layers) |
-| Dictionary | `twi_translate/data/twi_dictionary.tsv.gz`, 478,822 English→Twi phrases, offline |
+| Models | [`gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b), [`gloss-mt-nllb-1.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-1.3b), [`gloss-mt-nllb-600m`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-600m), [`gloss-mt-translategemma-4b`](https://huggingface.co/ghanaopenai/gloss-mt-translategemma-4b), [`gloss-mt-opus-mt-en-tw`](https://huggingface.co/ghanaopenai/gloss-mt-opus-mt-en-tw) |
+| Training data | [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi) |
+| Live demo (Space) | [`ghanaopenai/gloss-mt`](https://huggingface.co/spaces/ghanaopenai/gloss-mt): switch between the models |
+| Dictionary | `twi_translate/data/twi_dictionary_single.tsv.gz`, 613,259 English → Twi phrases, one translation each, offline |
+| Benchmark | [nsanku-mt-benchmark](https://github.com/GhanaNLP/nsanku-mt-benchmark) ([leaderboard](https://huggingface.co/spaces/ghananlpcommunity/nsanku-mt-benchmark)) |
+| Paper notes | [`paper/PREAMBLE.md`](paper/PREAMBLE.md), [`paper/BENCHMARK_ANALYSIS.md`](paper/BENCHMARK_ANALYSIS.md) |
 
-## Interactive Demo
-
-Try the live model in real time on Hugging Face Spaces:  
-👉 **[huggingface.co/spaces/ghanaopenai/gloss-mt](https://huggingface.co/spaces/ghanaopenai/gloss-mt)**
-
-Google Translate-style interface featuring real-time token streaming, live dictionary tool-calling against 478,822 entries, and dedicated linguistic reasoning inspection.
-
-## How it works at inference
+## How it works
 
 ```
-user text ──► model ──► <|tool_call>call:lookup_twi_translation{phrases:[...]}<tool_call|>
-                              │
-                    twi_translate.TwiLookup  (local dictionary, no network)
-                              │
-          tool result ──► model ──► <|channel>thought ...reasoning...<channel|> Twi translation
+English text
+  │  split into line-aligned chunks of at most 192 tokens (128 for OPUS-MT)
+  ▼
+spaCy noun phrases ──► offline dictionary lookup
+  │
+  ▼
+found phrases replaced by their Twi translation in angle brackets, in place
+  "Our people have courage, but courage without foundation is foolishness."
+  "Our <nnipa> have <akokoduro>, but <akokoduro> without <fapem> is <nkwasiasɛm>."
+  │
+  ▼
+fine-tuned translation model ──► Twi chunk with the terms in brackets
+  │  brackets removed, chunks re-joined
+  ▼
+Twi text
 ```
 
-The model only writes text. `twi_translate.TwiTranslator` runs the loop:
+Phrases not in the dictionary stay plain English for the model to translate. Markdown structure
+(headings, lists, tables) is kept line by line, and table-of-contents dot leaders are kept out of
+the model and restored unchanged.
 
-1. render the prompt (Gemma 4 template, `enable_thinking=True`, exactly as in training),
-2. parse the tool call from the model output,
-3. look the phrases up in the bundled dictionary,
-4. append the result as a `tool` message (same template as the training data),
-5. generate again to get the reasoning and translation.
+> **Input scope:** GLOSS-MT is trained on **paragraph- and document-level text**. Isolated words or
+> greetings (e.g. a standalone *"Welcome"*) without sentence context can translate poorly; give
+> complete sentences or paragraphs.
 
-> **Important Input Scope Note:** GLOSS-MT is optimized for **long-form, paragraph-level, and document texts**. Translating single-word fragments or isolated greetings (e.g. standalone *"Welcome"*) without subject/predicate context can cause degraded or unnatural outputs. For best results, provide complete sentences or cohesive paragraph-level context.
+## Results (nsanku-mt-benchmark, English → Asante Twi)
 
-## Quick start (deployment)
+Document-level chrF2 over 84 documents in four domains (each domain weighs the same in the mean):
+
+| Model | chrF2 | BLEU | Base model's chrF2 |
+|---|:---:|:---:|:---:|
+| Gemini 3.8 Flash | 54.64 | 17.25 | |
+| Google Translate | 51.26 | 15.67 | |
+| **GLOSS-MT NLLB-200 3.3B** | **50.80** | 13.11 | 47.74 |
+| **GLOSS-MT NLLB-200 1.3B** | **50.27** | 12.82 | 47.42 |
+| **GLOSS-MT NLLB-200 600M** | **50.12** | 12.23 | 46.71 |
+| Khaya AI | 49.91 | 12.79 | |
+| **GLOSS-MT TranslateGemma 4B** | **49.81** | 12.24 | no Twi output zero-shot |
+| **GLOSS-MT OPUS-MT en-tw** | **48.00** | 10.91 | 42.52 |
+
+Every fine-tune scores above its pretrained base on chrF2 (+2.85 to +5.48); on BLEU the NLLB
+fine-tunes are 0.5–1.0 below their bases. **Controllability** is measured directly
+(`training/eval_controllability.py`): on human-translated Asante Twi Bible passages the fine-tuned
+models write 79–97% of the dictionary terms, and when every dictionary entry is replaced by a
+different term, 70–97% of the new terms appear, with no retraining. Details in
+[`paper/BENCHMARK_ANALYSIS.md`](paper/BENCHMARK_ANALYSIS.md).
+
+## Quick start
 
 ```bash
-pip install -e ".[local]"          # in-process with transformers (GPU)
-twi-translate --model <merged-model-dir-or-hf-id> -v "The temperature difference between the inner and outer surface of the cylinder."
+pip install git+https://github.com/GhanaOpenAI/gloss-mt.git
+pip install torch transformers sentencepiece spacy
+python -m spacy download en_core_web_sm
 ```
-
-Or serve with vLLM and use the client backend:
-
-```bash
-pip install -e ".[client]"
-vllm serve ghanaopenai/gloss-mt --served-model-name twi-translator --max-model-len 8192 \
-    --enable-auto-tool-choice --tool-call-parser gemma4 --reasoning-parser gemma4
-twi-translate --base-url http://localhost:8000/v1 --model twi-translator -v "Did you hear the matter in court?"
-```
-
-As an HTTP service (`POST /translate {"text": ...}`):
-
-```bash
-pip install -e ".[local,server]"
-twi-translate --model <merged-model> --serve --port 8310
-```
-
-From Python:
 
 ```python
-from twi_translate import TwiTranslator, TransformersBackend   # or OpenAIBackend(base_url, model)
-tr = TwiTranslator(TransformersBackend("<merged-model>"))
-out = tr.translate("Did you hear the matter in court?")
-out["translation"], out["reasoning"], out["lookups"]
+from twi_translate.seq2seq import Seq2SeqTranslator
+
+tr = Seq2SeqTranslator("ghanaopenai/gloss-mt-nllb-3.3b", num_beams=4)   # or -1.3b, -600m, -opus-mt-en-tw
+out = tr.translate("The district assembly approved the new budget for schools and clinics.")
+out["translation"], out["lookup_results"]   # Twi text, dictionary phrases used
 ```
 
-The runtime understands both Gemma 4 (`<|tool_call>call:...`) and Hermes/Qwen
-(`<tool_call>{json}</tool_call>`) tool-call formats.
+TranslateGemma loads its adapter on the base model:
 
-## The dataset
+```python
+from twi_translate.translategemma import TranslateGemmaTranslator
 
-Built by `dataset_builder/build_dataset.py` from the English→Twi rows (`pristine`,
-`ghana_chat_en2tw`) of
-[`ghananlpcommunity/twi-english-reasoning-translation`](https://huggingface.co/datasets/ghananlpcommunity/twi-english-reasoning-translation).
-In those rows the Twi is a gold human reference, and Gemini wrote a numbered reasoning trace
-explaining it.
+tr = TranslateGemmaTranslator("google/translategemma-4b-it", adapter="ghanaopenai/gloss-mt-translategemma-4b")
+```
 
-| Part of each example | Source |
+`glossary=False` on either translator skips the dictionary (the model's own translation), and a
+custom dictionary can be passed as `lookup=TwiLookup(path)`.
+
+### HTTP API
+
+The API behind the Space serves all GLOSS-MT models, loading each from Hugging Face on first use:
+
+```bash
+pip install fastapi uvicorn pydantic
+python -m twi_translate.seq2seq_server --port 8000
+```
+
+| Endpoint | |
 |---|---|
-| user turn | the original English text, Markdown included |
-| tool call | English phrases **quoted in the reasoning** (e.g. `'national progress' is 'ɔman nkɔso'`) that occur in the source text and are noun phrases (spaCy), with articles and possessives removed, at most 4 words |
-| tool result | those phrases looked up in the offline dictionary; not-found phrases are listed as such |
-| final turn | `reasoning_content` = the original reasoning, `content` = the gold Twi translation |
+| `GET /models` | the models offered |
+| `POST /translate` | `{"text": "...", "model": "nllb-1.3b"}` → `{"translation", "lookups", "model"}` |
+| `POST /translate/stream` | the same as server-sent events: lookups, then one translation delta per paragraph |
 
-The trajectory is `system → user → assistant(tool_calls) → tool → assistant(reasoning + translation)`,
-so the dictionary results come before, and feed, the linguistic reasoning.
+## Data
 
-| split | examples | with tool call | phrases | found |
-|---|---|---|---|---|
-| train | 15,134 | 14,431 | 139,747 | 41.2% |
-| validation | 332 | 322 | 3,166 | 40.6% |
-| test | 538 | 513 | 4,864 | 40.8% |
+`scripts/build_chunked_dataset.py` builds the training data from English–Twi documents with gold
+human Twi translations (15,134 training documents):
 
-The dictionary was exported from the Gemini translations in
-[`AfriSpeech/shola-machine-translations`](https://huggingface.co/datasets/AfriSpeech/shola-machine-translations)
-(`gemini-3.6-flash-one`, then up to 3 options from `gemini-3.6-flash`). The same file builds the
-training data and serves the tool at deployment, so the model sees identical tool output in both.
-Rebuild it with `python -m twi_translate.lookup --rebuild`.
+1. Each document is split into line-aligned English/Twi lines, packed into chunks of at most 192
+   tokens (31,909 training chunks).
+2. spaCy extracts each chunk's English noun phrases; Gemini aligns each phrase to its span in the
+   gold Twi chunk (kept only if the span occurs verbatim, on the same line).
+3. The aligned pairs are bracketed on both sides: `english_pretranslated` (the training input,
+   with the Twi spans in place) and `twi_bracketed` (the target).
+
+The dictionary (`twi_dictionary_single.tsv.gz`) has exactly one translation per phrase:
+`scripts/rebuild_dictionary_single.py` re-translated the entries that had several candidates, and
+`scripts/sync_glossary_with_gold.py` adds every aligned phrase–span pair of the dataset.
 
 ## Training
 
-```bash
-# SFT Fine-Tuning (bf16 LoRA r=32 on language model; vision/audio towers frozen)
-python training/train_sft.py --backend hf --model google/gemma-4-E4B-it --data data \
-    --out checkpoints/gemma4-e4b-twi-tool --epochs 5 --lr 2e-4
-# Merge the adapter into the bf16 base -> standalone model for vLLM / transformers
-python training/merge_lora.py --base google/gemma-4-E4B-it \
-    --adapter checkpoints/gemma4-e4b-twi-tool/adapter --out checkpoints/gemma4-e4b-twi-tool/merged
-```
+| Model | Script | Fine-tune |
+|---|---|---|
+| NLLB-200 3.3B / 1.3B / 600M | `training/train_seq2seq.py` (`run_train_nllb_*.sh`) | LoRA r=32 (3.3B, merged with `training/merge_seq2seq_lora.py`) or full (1.3B, 600M) |
+| OPUS-MT en-tw | `training/train_opus_mt.py` (`run_train_opus_mt.sh`) | full |
+| TranslateGemma 4B | `training/train_translategemma.py` (`run_train_translategemma_4b.sh`) | LoRA r=32 |
+| MADLAD-400 3B | `training/train_madlad.py` (`run_train_madlad_3b.sh`) | LoRA r=32 |
 
-Loss is only on the tokens the model generates at inference: the tool call (including the
-`<|tool_response>` stop token), then reasoning, translation and `<turn|>`. Conversations are rendered with
-`enable_thinking=True`, the same as the runtime. Examples run 2.9k tokens at the median and 5.4k at most
-(`--max-len 6144`). `--backend hf` uses plain transformers + PEFT instead of Unsloth.
+Every 1,000 steps the model translates 200 fixed validation chunks
+(`training/gen_eval.py`), and the checkpoint with the best mean of BLEU, chrF2 and
+100·e^(−loss) is kept, with early stopping.
 
 ## Evaluation
 
-`training/evaluate.py` runs held-out test examples through the real runtime (vLLM backend) and
-reports tool-call rate, phrase precision/recall against the reference phrases, chrF++ and BLEU.
-`--no-tools` gives a direct-translation baseline.
+- `training/eval_seq2seq.py`: BLEU / chrF2 of a model through the full pipeline.
+- `training/eval_controllability.py`: term adherence with the dictionary, without it, and with
+  every entry swapped for a different term; `--jsonl` runs it on a human-translated set such as
+  the Asante Twi Bible passages of `scripts/build_bible_testset.py` (the Bible text is not
+  redistributed; `results/controllability/` keeps its metrics only).
+- Document-level benchmark: [nsanku-mt-benchmark](https://github.com/GhanaNLP/nsanku-mt-benchmark).
 
 ## Layout
 
 | Path | Purpose |
 |---|---|
-| `twi_translate/` | installable runtime: `schema.py` (tool + prompts), `lookup.py` (dictionary), `runtime.py` (loop, parsers, backends), `cli.py`, `server.py`, `data/` |
-| `dataset_builder/` | `phrases.py` (phrases from reasoning), `build_dataset.py` |
-| `training/` | `train_sft.py`, `merge_lora.py`, `evaluate.py` |
+| `twi_translate/` | `seq2seq.py` (chunking, lookup, pretranslation, NLLB/OPUS-MT/MADLAD translator), `translategemma.py`, `lookup.py` (dictionary), `seq2seq_server.py` (HTTP API), `data/` |
+| `scripts/` | dataset, dictionary and test-set builders |
+| `training/` | fine-tuning, checkpoint selection and evaluation |
+| `paper/` | research question, method and results |
+| `results/` | controllability results |
+| `space/` | the Hugging Face Space front end |
 | `tests/` | offline tests (`python -m pytest tests -q`) |
 
 ## Licence
 
-CC-BY-NC-4.0, inherited from the data sources. Non-commercial use only.
+CC-BY-NC-4.0, inherited from the data sources. Non-commercial use only. The TranslateGemma adapter
+is also subject to the Gemma Terms of Use.

@@ -112,6 +112,10 @@ print(result["lookup_results"])  # dictionary phrases used
 It also loads as a plain NLLB model (`AutoModelForSeq2SeqLM`, `src_lang="eng_Latn"`,
 `forced_bos_token_id` of `twi_Latn`), but without the dictionary step quality is lower.
 
+**Weights.** The default (`main`) weights are bf16, the precision the model was trained and is
+served in. The original fp32 weights are on the `fp32` branch:
+`AutoModelForSeq2SeqLM.from_pretrained("ghanaopenai/gloss-mt-nllb-600m", revision="fp32")`.
+
 ## The GLOSS-MT models
 
 GLOSS-MT adds an editable dictionary to pretrained translation models: dictionary terms are
