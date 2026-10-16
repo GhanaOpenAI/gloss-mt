@@ -77,13 +77,29 @@ def default_chunk_tokens(tok) -> int:
 
 
 def load_seq2seq(path: str, **kwargs):
-    """AutoModelForSeq2SeqLM, falling back to UMT5 for hub configs that lack `model_type`."""
-    from transformers import AutoModelForSeq2SeqLM, UMT5ForConditionalGeneration
+    """AutoModelForSeq2SeqLM, falling back to UMT5 for hub configs that lack `model_type`.
 
+    T5 models with an untied lm_head (MADLAD-400; the merged fine-tune) store the one embedding
+    that shared, encoder.embed_tokens and decoder.embed_tokens point to under a single name
+    (MADLAD: decoder.embed_tokens; save_pretrained: shared). Some transformers versions (5.17)
+    ignore the config's tie_word_embeddings=false, tying lm_head to the shared embedding, and
+    leave the other names randomly initialised (the model outputs "y y y ..."). So an explicit
+    false is passed on, and the embedding that was loaded is shared by all three names."""
+    from transformers import AutoModelForSeq2SeqLM, PretrainedConfig, UMT5ForConditionalGeneration
+
+    if PretrainedConfig.get_config_dict(path)[0].get("tie_word_embeddings") is False:
+        kwargs.setdefault("tie_word_embeddings", False)
     try:
-        return AutoModelForSeq2SeqLM.from_pretrained(path, **kwargs)
+        model, info = AutoModelForSeq2SeqLM.from_pretrained(path, output_loading_info=True, **kwargs)
     except ValueError:
-        return UMT5ForConditionalGeneration.from_pretrained(path, **kwargs)
+        model, info = UMT5ForConditionalGeneration.from_pretrained(path, output_loading_info=True, **kwargs)
+    if hasattr(model, "shared"):
+        emb = {"shared.weight": model.shared, "encoder.embed_tokens.weight": model.encoder.embed_tokens,
+               "decoder.embed_tokens.weight": model.decoder.embed_tokens}
+        loaded = [k for k in emb if k not in info["missing_keys"]]
+        if loaded and len(loaded) < len(emb):
+            model.shared = model.encoder.embed_tokens = model.decoder.embed_tokens = emb[loaded[0]]
+    return model
 
 
 def split_lines(text: str) -> Tuple[List[str], List[str]]:
