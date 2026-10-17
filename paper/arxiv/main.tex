@@ -4,11 +4,6 @@
 \usepackage[utf8]{inputenc}
 \usepackage{times}
 \usepackage[safe]{tipa}
-\usepackage{newunicodechar}
-\newunicodechar{ɛ}{\textepsilon}
-\newunicodechar{ɔ}{\textopeno}
-\newunicodechar{Ɛ}{\textcapepsilon}
-\newunicodechar{Ɔ}{\textcapopeno}
 \usepackage[letterpaper,margin=0.75in,columnsep=0.25in]{geometry}
 \usepackage{booktabs}
 \usepackage{multirow}
@@ -56,7 +51,7 @@ Terminology can be imposed at decoding time with lexically constrained beam sear
 
 \paragraph{Dictionary.} An offline English$\rightarrow$Twi dictionary of 613,259 phrases with exactly one translation each. Entries come from machine-translated phrase lists (re-translated with Gemini where an entry had several candidates) and from the phrase--span alignments of the training data below.
 
-\paragraph{Pipeline.} A document is split into lines, and consecutive lines are packed into chunks of at most 192 source tokens (128 for OPUS-MT), cutting only at line boundaries so that Markdown structure is preserved. The chunk's noun phrases are extracted with spaCy~\cite{honnibal2020spacy} and looked up; each phrase found is replaced in the English, longest first, by its Twi translation in angle brackets, and phrases not found stay English. For example, ``\emph{Our people have courage, but courage without foundation is foolishness.}'' becomes ``\emph{Our \term{nnipa} have \term{akokoduro}, but \term{akokoduro} without \term{fapem} is \term{nkwasiasɛm}.}'' The model writes the terms in brackets too, and the pipeline strips them. Table-of-contents dot leaders are kept out of the model and restored.
+\paragraph{Pipeline.} A document is split into lines, and consecutive lines are packed into chunks of at most 192 source tokens (128 for OPUS-MT), cutting only at line boundaries so that Markdown structure is preserved. The chunk's noun phrases are extracted with spaCy~\cite{honnibal2020spacy} and looked up; each phrase found is replaced in the English, longest first, by its Twi translation in angle brackets, and phrases not found stay English. For example, ``\emph{Our people have courage, but courage without foundation is foolishness.}'' becomes ``\emph{Our \term{nnipa} have \term{akokoduro}, but \term{akokoduro} without \term{fapem} is \term{nkwasias{\textepsilon}m}.}'' The model writes the terms in brackets too, and the pipeline strips them. Table-of-contents dot leaders are kept out of the model and restored.
 
 \paragraph{Training data.} From 15,134 English--Twi training documents we build 31,909 line-aligned chunks. Gemini aligns each English noun phrase of a chunk to its span in the reference Twi; a span is kept only if it occurs verbatim on the phrase's line. Each aligned pair is bracketed on both sides: the input carries the Twi span in place of the phrase, and the target carries the same span in brackets. The model thus learns to copy the bracketed terms and translate the sentence around them. The data is released as \texttt{gloss-mt-parallel-en-twi}.
 
