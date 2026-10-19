@@ -237,4 +237,4 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
         )
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="0.0.0.0", server_port=7860, show_error=True)

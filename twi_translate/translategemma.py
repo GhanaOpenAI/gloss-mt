@@ -38,18 +38,21 @@ class TranslateGemmaTranslator(ChunkedTranslator):
     def __init__(self, model: str, adapter: Optional[str] = None, lookup: Optional[TwiLookup] = None,
                  device: Optional[str] = None, chunk_tokens: int = 192, max_new_tokens: int = 1024,
                  batch_size: int = 16, glossary: bool = True):
+        import os
         import torch
         from transformers import AutoTokenizer
 
-        tok = AutoTokenizer.from_pretrained(model)
+        hf_token = os.environ.get("HF_TOKEN")
+        tok = AutoTokenizer.from_pretrained(model, token=hf_token)
         tok.padding_side = "left"
         super().__init__(tok, lookup, chunk_tokens, glossary)
         self.torch = torch
         self.device = device or "cuda:0"
-        self.model = load_translategemma(model, dtype=torch.bfloat16, device_map={"": self.device})
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.is_bf16_supported() else torch.float16
+        self.model = load_translategemma(model, torch_dtype=dtype, device_map={"": self.device}, token=hf_token)
         if adapter:
             from peft import PeftModel
-            self.model = PeftModel.from_pretrained(self.model, adapter)
+            self.model = PeftModel.from_pretrained(self.model, adapter, token=hf_token)
         self.model.eval()
         self.max_new_tokens, self.batch_size = max_new_tokens, batch_size
         self.eos = [tok.eos_token_id, tok.convert_tokens_to_ids(END_OF_TURN)]
