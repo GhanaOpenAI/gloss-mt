@@ -1,0 +1,8 @@
+torch>=2.1.0
+transformers>=4.38.0
+sentencepiece
+protobuf
+sacremoses
+spacy>=3.7.0
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+gradio>=5.0.0

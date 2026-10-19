@@ -3,19 +3,22 @@ title: GLOSS-MT
 emoji: 🌐
 colorFrom: blue
 colorTo: green
-sdk: static
+sdk: gradio
+sdk_version: 5.20.0
+app_file: app.py
 pinned: false
-short_description: English to Twi translator, GLOSS-MT models + dictionary
+short_description: English to Twi translator (GLOSS-MT NLLB-3.3B)
 ---
 
-# GLOSS-MT (Akan / Asante Twi)
+# GLOSS-MT (English → Akan / Asante Twi)
 
-Google Translate-style interface for English-to-Twi translation with the GLOSS-MT models, translation models fine-tuned with an offline English–Twi dictionary: key phrases are looked up and pretranslated in place, then the model translates the text (served on an NVIDIA H200). A menu switches between the models: NLLB-200 3.3B (default), NLLB-200 1.3B, NLLB-200 600M, TranslateGemma 4B and OPUS-MT en-tw.
+Google Translate-style interface for English-to-Twi translation powered by **GLOSS-MT NLLB-200 3.3B**, fine-tuned with in-place offline dictionary grounding.
 
-**Author:** [Ghana Open AI](https://huggingface.co/ghanaopenai)  
-**Supported by:** [Ghana NLP](https://ghananlp.org)  
-**Default model:** [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b)  
-**Code:** [`GhanaOpenAI/gloss-mt`](https://github.com/GhanaOpenAI/gloss-mt)
+- **Author:** [Ghana Open AI](https://huggingface.co/ghanaopenai)
+- **Supported by:** [Ghana NLP](https://ghananlp.org)
+- **Model:** [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b)
+- **Dataset:** [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi)
+- **Code:** [`GhanaOpenAI/gloss-mt`](https://github.com/GhanaOpenAI/gloss-mt)
 
-### 💡 Best Practice & Input Scope
-GLOSS-MT is optimized for **long-form, paragraph-level, and document texts** (news articles, reports, educational prose, and narratives). Translating isolated single-word fragments or elliptical greetings (e.g., standalone *"Welcome"*) without full subject/predicate context may yield degraded results. For optimal translation quality, provide complete grammatical sentences or cohesive paragraphs.
+### 💡 Input Scope
+GLOSS-MT is optimized for **long-form, paragraph-level, and document texts** (news articles, reports, educational prose, and narratives). Translating isolated single-word fragments or elliptical greetings without full context may yield degraded results. Provide complete grammatical sentences or cohesive paragraphs for best results.

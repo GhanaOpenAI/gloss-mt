@@ -7,3 +7,4 @@ data/build.log
 eval_results/*.jsonl
 *.egg-info/
 session-*.md
+space/twi_translate/
