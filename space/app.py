@@ -6,69 +6,98 @@ import torch
 import gradio as gr
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from twi_translate.seq2seq import Seq2SeqTranslator, pretranslate, glossary_for
+from twi_translate.lookup import TwiLookup
+from twi_translate.seq2seq import (
+    Seq2SeqTranslator,
+    GLOSSARY_DICT,
+    pretranslate,
+    glossary_for,
+)
 
 MODELS = {
     "GLOSS-MT NLLB-200 3.3B (Default)": {
         "repo_id": "ghanaopenai/gloss-mt-nllb-3.3b",
-        "default_glossary": True,
-        "description": "NLLB-200 3.3B fine-tuned with in-place offline dictionary grounding.",
+        "backend": "seq2seq",
+        "params": "3.3B",
+        "description": "NLLB-200 3.3B fine-tuned with in-place offline glossary grounding.",
     },
-    "NLLB-200 3.3B (Base Model)": {
-        "repo_id": "facebook/nllb-200-3.3B",
-        "default_glossary": False,
-        "description": "Base Meta NLLB-200 3.3B model.",
+    "GLOSS-MT NLLB-200 1.3B": {
+        "repo_id": "ghanaopenai/gloss-mt-nllb-1.3b",
+        "backend": "seq2seq",
+        "params": "1.3B",
+        "description": "Mid-sized 1.3B model balancing high accuracy and fast generation.",
     },
-    "NLLB-200 1.3B (Base Model)": {
-        "repo_id": "facebook/nllb-200-1.3B",
-        "default_glossary": False,
-        "description": "Base Meta NLLB-200 1.3B model (lighter & faster).",
+    "GLOSS-MT NLLB-200 600M": {
+        "repo_id": "ghanaopenai/gloss-mt-nllb-600m",
+        "backend": "seq2seq",
+        "params": "600M",
+        "description": "Distilled 600M model optimized for ultra-fast, lightweight inference.",
     },
-    "NLLB-200 600M (Distilled)": {
-        "repo_id": "facebook/nllb-200-distilled-600M",
-        "default_glossary": False,
-        "description": "Distilled 600M model for fastest inference.",
+    "GLOSS-MT OPUS-MT en-tw": {
+        "repo_id": "ghanaopenai/gloss-mt-opus-mt-en-tw",
+        "backend": "seq2seq",
+        "params": "75M",
+        "description": "75M Marian architecture fine-tuned with dictionary grounding.",
+    },
+    "GLOSS-MT TranslateGemma 4B": {
+        "repo_id": "ghanaopenai/gloss-mt-translategemma-4b",
+        "base_model": "google/translategemma-4b-it",
+        "backend": "translategemma",
+        "params": "4B",
+        "description": "Google TranslateGemma-4B fine-tuned with in-place glossary LoRA.",
     },
 }
 
 DEFAULT_MODEL_KEY = "GLOSS-MT NLLB-200 3.3B (Default)"
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+print("Loading shared offline Twi dictionary...")
+shared_lookup = TwiLookup(GLOSSARY_DICT)
+
 current_model_key = None
 current_translator = None
 
 
-def get_translator(model_key: str, use_glossary: bool):
+def get_translator(model_key: str):
     global current_model_key, current_translator
     if model_key not in MODELS:
         model_key = DEFAULT_MODEL_KEY
-    config = MODELS[model_key]
-    repo_id = config["repo_id"]
+    spec = MODELS[model_key]
 
-    if (
-        current_translator is not None
-        and current_model_key == model_key
-        and current_translator.glossary == use_glossary
-    ):
+    if current_translator is not None and current_model_key == model_key:
         return current_translator
 
-    if current_translator is not None and current_model_key != model_key:
+    if current_translator is not None:
         print(f"Unloading {current_model_key} to free GPU memory...")
         del current_translator
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
             gc.collect()
 
-    print(f"Loading {repo_id} (glossary={use_glossary}) on {device}...")
-    current_translator = Seq2SeqTranslator(model=repo_id, device=device, glossary=use_glossary)
+    print(f"Loading {model_key} ({spec['repo_id']}) on {device}...")
+    if spec["backend"] == "translategemma":
+        from twi_translate.translategemma import TranslateGemmaTranslator
+        current_translator = TranslateGemmaTranslator(
+            spec["base_model"],
+            adapter=spec["repo_id"],
+            lookup=shared_lookup,
+            device=device,
+        )
+    else:
+        current_translator = Seq2SeqTranslator(
+            model=spec["repo_id"],
+            lookup=shared_lookup,
+            device=device,
+        )
+
     current_model_key = model_key
     return current_translator
 
 
-# Preload default model at startup
-print("Preloading default model...")
-get_translator(DEFAULT_MODEL_KEY, use_glossary=True)
-print("Default model ready!")
+# Preload default model
+print(f"Preloading default model: {DEFAULT_MODEL_KEY}...")
+get_translator(DEFAULT_MODEL_KEY)
+print("GLOSS-MT Suite ready!")
 
 EXAMPLES = [
     [
@@ -79,7 +108,6 @@ EXAMPLES = [
         "- **Services:** blood pressure checks, malaria testing and eye care\n\n"
         "All residents are encouraged to attend.",
         DEFAULT_MODEL_KEY,
-        True,
     ],
     [
         "### 2024 Budget Allocations\n\n"
@@ -90,7 +118,6 @@ EXAMPLES = [
         "| Agriculture | 640 | Fertiliser for farmers |\n\n"
         "The government says these sectors will receive priority this year.",
         DEFAULT_MODEL_KEY,
-        True,
     ],
     [
         "# How to Register Your Farm\n\n"
@@ -99,23 +126,21 @@ EXAMPLES = [
         "3. Fill in the registration form and submit it to the officer.\n\n"
         "*Registered farmers will receive subsidised seeds and fertiliser.*",
         DEFAULT_MODEL_KEY,
-        True,
     ],
     [
         "## Article 1\n\n"
         "> All human beings are born free and equal in dignity and rights.\n\n"
         "They are endowed with reason and conscience and should act towards one another in a spirit of brotherhood.",
         DEFAULT_MODEL_KEY,
-        True,
     ],
 ]
 
 
-def translate(text: str, model_choice: str, use_glossary: bool):
+def translate(text: str, model_choice: str):
     if not text or not text.strip():
         return "", "", ""
 
-    translator = get_translator(model_choice, use_glossary=use_glossary)
+    translator = get_translator(model_choice)
     res = translator.translate(text)
     translation = res.get("translation", "")
     lookup_results = res.get("lookup_results", [])
@@ -133,15 +158,12 @@ def translate(text: str, model_choice: str, use_glossary: bool):
     if matched_rows:
         lookups_table = "| English Term | Twi Translation |\n|---|---|\n" + "\n".join(matched_rows)
     else:
-        lookups_table = "*No glossary terms used or matched.*" if use_glossary else "*Glossary grounding disabled.*"
+        lookups_table = "*No glossary terms matched from the offline dictionary.*"
 
-    if use_glossary and translator.lookup:
-        try:
-            gloss = glossary_for(text, translator.lookup)
-            pretrans_text = pretranslate(text, gloss)
-        except Exception:
-            pretrans_text = text
-    else:
+    try:
+        gloss = glossary_for(text, translator.lookup)
+        pretrans_text = pretranslate(text, gloss)
+    except Exception:
         pretrans_text = text
 
     return translation, lookups_table, pretrans_text
@@ -156,10 +178,10 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
     with gr.Column(elem_classes=["container"]):
         gr.Markdown(
             "# 🌐 GLOSS-MT: English → Twi (Akan)\n"
-            "State-of-the-art English to Asante Twi translation powered by **GLOSS-MT** models "
+            "State-of-the-art English to Asante Twi translation powered by the **GLOSS-MT** model suite "
             "with in-place offline glossary grounding.\n\n"
             "**Supported by:** [Ghana NLP](https://ghananlp.org) & [Ghana Open AI](https://huggingface.co/ghanaopenai) | "
-            "**Model:** [`ghanaopenai/gloss-mt-nllb-3.3b`](https://huggingface.co/ghanaopenai/gloss-mt-nllb-3.3b) | "
+            "**Models:** [`ghanaopenai`](https://huggingface.co/models?search=ghanaopenai%2Fgloss-mt) | "
             "**Dataset:** [`ghanaopenai/gloss-mt-parallel-en-twi`](https://huggingface.co/datasets/ghanaopenai/gloss-mt-parallel-en-twi) | "
             "**Code:** [`GitHub`](https://github.com/GhanaOpenAI/gloss-mt)"
         )
@@ -168,14 +190,9 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
             model_selector = gr.Dropdown(
                 choices=list(MODELS.keys()),
                 value=DEFAULT_MODEL_KEY,
-                label="Translation Model",
+                label="Select GLOSS-MT Model",
+                info="Switch between the fine-tuned GLOSS-MT models",
                 scale=3,
-            )
-            glossary_toggle = gr.Checkbox(
-                value=True,
-                label="Use Glossary Grounding",
-                info="Pre-translates domain terms before generation",
-                scale=1,
             )
 
         with gr.Row():
@@ -206,7 +223,7 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
 
         gr.Examples(
             examples=EXAMPLES,
-            inputs=[input_text, model_selector, glossary_toggle],
+            inputs=[input_text, model_selector],
             outputs=[output_text, lookups_display, pretrans_display],
             fn=translate,
             cache_examples=False,
@@ -215,7 +232,7 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
 
         translate_btn.click(
             fn=translate,
-            inputs=[input_text, model_selector, glossary_toggle],
+            inputs=[input_text, model_selector],
             outputs=[output_text, lookups_display, pretrans_display],
         )
 
