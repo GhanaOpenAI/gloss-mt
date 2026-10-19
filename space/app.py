@@ -100,6 +100,20 @@ get_translator(DEFAULT_MODEL_KEY)
 print("GLOSS-MT Suite ready!")
 
 EXAMPLES = [
+    # --- Plain Text Examples (No Markdown) ---
+    [
+        "The Ministry of Finance announced yesterday that the government has secured a new international facility to support farmers and improve food security across all regions.",
+        DEFAULT_MODEL_KEY,
+    ],
+    [
+        "Good morning, elder. We came to ask about the family land near the river. The youth in the community are ready to start farming there next season if the elders give their blessing.",
+        DEFAULT_MODEL_KEY,
+    ],
+    [
+        "The high court in Kumasi adjourned the land dispute case until next month to allow the state attorneys and the traditional leaders to submit their written evidence.",
+        DEFAULT_MODEL_KEY,
+    ],
+    # --- Formatted Markdown Examples ---
     [
         "## Community Health Notice\n\n"
         "The district health directorate will hold a free screening exercise next week.\n\n"
@@ -138,7 +152,7 @@ EXAMPLES = [
 
 def translate(text: str, model_choice: str):
     if not text or not text.strip():
-        return "", "", ""
+        return "", "", "", ""
 
     translator = get_translator(model_choice)
     res = translator.translate(text)
@@ -166,12 +180,24 @@ def translate(text: str, model_choice: str):
     except Exception:
         pretrans_text = text
 
-    return translation, lookups_table, pretrans_text
+    return translation, translation, lookups_table, pretrans_text
 
 
 custom_css = """
 .container { max-width: 1050px; margin: auto; padding-top: 10px; }
 .output-box textarea { font-size: 16px !important; line-height: 1.6 !important; }
+.rendered-markdown-box {
+    min-height: 180px;
+    padding: 14px 18px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1.6;
+}
+.rendered-markdown-box table { border-collapse: collapse; margin: 12px 0; width: 100%; }
+.rendered-markdown-box th, .rendered-markdown-box td { border: 1px solid #dadce0; padding: 6px 12px; text-align: left; }
+.rendered-markdown-box th { background: #f1f3f4; font-weight: 600; }
 """
 
 with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as demo:
@@ -199,18 +225,25 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
             with gr.Column(scale=1):
                 input_text = gr.Textbox(
                     label="English Input",
-                    placeholder="Enter English text to translate (supports Markdown, tables, lists, etc.)...",
+                    placeholder="Enter English text to translate (plain prose, dialogue, or formatted Markdown tables/lists)...",
                     lines=8,
                 )
                 translate_btn = gr.Button("Translate to Twi", variant="primary", size="lg")
 
             with gr.Column(scale=1):
-                output_text = gr.Textbox(
-                    label="Asante Twi Translation",
-                    lines=8,
-                    show_copy_button=True,
-                    elem_classes=["output-box"],
-                )
+                with gr.Tabs():
+                    with gr.Tab("Rendered View"):
+                        output_markdown = gr.Markdown(
+                            elem_classes=["rendered-markdown-box"],
+                            value="*Translation will render here (supports formatting, tables, lists, headings)...*",
+                        )
+                    with gr.Tab("Raw Text (Copy)"):
+                        output_raw = gr.Textbox(
+                            label="Raw Translation (with Markdown tags)",
+                            lines=8,
+                            show_copy_button=True,
+                            elem_classes=["output-box"],
+                        )
 
         with gr.Accordion("🔍 Inspected Terms & In-Place Grounding", open=False):
             with gr.Row():
@@ -224,16 +257,16 @@ with gr.Blocks(title="GLOSS-MT: English → Twi Translator", css=custom_css) as 
         gr.Examples(
             examples=EXAMPLES,
             inputs=[input_text, model_selector],
-            outputs=[output_text, lookups_display, pretrans_display],
+            outputs=[output_markdown, output_raw, lookups_display, pretrans_display],
             fn=translate,
             cache_examples=False,
-            label="Sample Document Inputs (Click to test)",
+            label="Sample Document Inputs (Plain prose & Markdown)",
         )
 
         translate_btn.click(
             fn=translate,
             inputs=[input_text, model_selector],
-            outputs=[output_text, lookups_display, pretrans_display],
+            outputs=[output_markdown, output_raw, lookups_display, pretrans_display],
         )
 
 if __name__ == "__main__":
